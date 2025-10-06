@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rush UE Admin Dashboard</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(to bottom, #fbd1dc, #fff);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Animated Background Blobs */
+    .animated-bg, .animated-bg2 {
+      position: fixed;
+      z-index: 0;
+      border-radius: 50%;
+      opacity: 0.3;
+      filter: blur(80px);
+    }
+
+    .animated-bg {
+      top: -100px;
+      left: -100px;
+      width: 300px;
+      height: 500px;
+      background: radial-gradient(circle, #ffdde1, #fbd1dc);
+      animation: float 10s ease-in-out infinite;
+    }
+
+    .animated-bg2 {
+      bottom: -120px;
+      right: -120px;
+      width: 250px;
+      height: 250px;
+      background: radial-gradient(circle, #ffc2d1, #f8b5bd);
+      animation: float2 12s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) translateX(0); }
+      50% { transform: translateY(20px) translateX(10px); }
+    }
+
+    @keyframes float2 {
+      0%, 100% { transform: translateY(0) translateX(0); }
+      50% { transform: translateY(-15px) translateX(-20px); }
+    }
+
+    .header-container {
+      display: flex;
+      align-items: center;
+      padding: 20px;
+      background-color: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      z-index: 2;
+      position: relative;
+    }
+
+    .header-container img {
+      width: 70px;
+      height: 70px;
+      object-fit: cover;
+      border-radius: 50%;
+      margin-right: 15px;
+      box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+    }
+
+    .header-title {
+      font-weight: 600;
+      font-size: 1.5rem;
+      margin: 0;
+      padding-left: 20px;
+      margin-top: 5px;
+      color: #dc3545;
+    }
+
+    .dashboard-container {
+      flex: 1;
+      z-index: 1;
+      position: relative;
+    }
+
+    footer {
+      background-color: #dc3545;
+      color: white;
+      font-size: 0.9rem;
+      z-index: 2;
+      position: relative;
+    }
+
+    footer a {
+      color: #fff;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Animated Background Blobs -->
+<div class="animated-bg"></div>
+<div class="animated-bg2"></div>
+
+<!-- Header -->
+<div class="header-container">
+  <a href="student.html">
+    <img src="images/rushuelogo.jpg" alt="UE Logo">
+  </a>
+  <h2 class="header-title">Navigation</h2>
+</div>
+
+<!-- Embedded Navigation Map -->
+<div class="container dashboard-container my-5">
+  <div class="ratio ratio-16x9">
+    <iframe 
+      src="https://www.google.com/maps/d/u/0/embed?mid=1tNkX4LQzVp9fNcLmnNClbyNfH7cIVaQ&ehbc=2E312F&noprof=1" 
+      style="border:0; width: 100%; height: 100%;" 
+      allowfullscreen="" 
+      loading="lazy">
+    </iframe>
+  </div>
+</div>
+
+<style>
+  /* Ensure the iframe is responsive */
+  .ratio {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%; /* Aspect ratio for 16:9 */
+  }
+
+  .ratio iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Adjust for mobile view */
+  @media (max-width: 768px) {
+    .ratio {
+      padding-top: 75%; /* Change to 4:3 aspect ratio for smaller screens */
+    }
+  }
+</style>
+
+
+<!-- Footer -->
+<footer class="text-center py-4 mt-auto">
+  <div class="container">
+    <p class="mb-0">&copy; 2025 University of the East | <a href="#">Rush UE</a></p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

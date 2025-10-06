@@ -1,0 +1,3202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rush UE Room Navigate</title>
+
+  <!-- Bootstrap + Icons + Fonts -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet">
+
+  <!-- Firebase v8 (compat) for your DB -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <!-- Leaflet for modal map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(to bottom, #fbd1dc, #fff);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Blobs */
+    .animated-bg,
+    .animated-bg2 {
+      position: fixed;
+      z-index: 0;
+      border-radius: 50%;
+      opacity: 0.3;
+      filter: blur(80px);
+    }
+
+    .animated-bg {
+      top: -100px;
+      left: -100px;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, #ffdde1, #fbd1dc);
+      animation: float 10s ease-in-out infinite;
+    }
+
+    .animated-bg2 {
+      bottom: -120px;
+      right: -120px;
+      width: 250px;
+      height: 250px;
+      background: radial-gradient(circle, #ffc2d1, #f8b5bd);
+      animation: float2 12s ease-in-out infinite;
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0) translateX(0)
+      }
+
+      50% {
+        transform: translateY(20px) translateX(10px)
+      }
+    }
+
+    @keyframes float2 {
+
+      0%,
+      100% {
+        transform: translateY(0) translateX(0)
+      }
+
+      50% {
+        transform: translateY(-15px) translateX(-20px)
+      }
+    }
+
+    /* Header */
+    .header-container {
+      display: flex;
+      align-items: center;
+      padding: 12px 20px;
+      background-color: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      position: relative;
+      z-index: 2;
+      border-radius: 0 0 15px 15px;
+    }
+
+    .header-container img {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-right: 10px;
+      box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+    }
+
+    .header-title {
+      font-weight: 600;
+      font-size: 1.4rem;
+      color: #dc3545;
+    }
+
+    /* Content */
+    .container {
+      max-width: 1000px;
+      margin: 20px auto;
+      padding: 15px;
+      position: relative;
+      z-index: 1;
+    }
+
+    h2 {
+      font-weight: 600;
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+    }
+
+    select,
+    input {
+      width: 100%;
+      padding: 12px;
+      font-size: 1rem;
+      border: 2px solid #f2cfd5;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      outline: none;
+    }
+
+    select:focus,
+    input:focus {
+      border-color: #dc3545;
+      box-shadow: 0 0 6px rgba(220, 53, 69, 0.3);
+    }
+
+    /* Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.9);
+      font-size: 0.9rem;
+    }
+
+    th,
+    td {
+      padding: 10px;
+      text-align: center;
+      border-bottom: 1px solid #f2cfd5;
+    }
+
+    th {
+      background: #fddde6;
+      font-weight: 600;
+    }
+
+    tr:hover {
+      background: #ffe6eb;
+      cursor: pointer;
+    }
+
+    /* Footer */
+    footer {
+      background-color: #dc3545;
+      color: white;
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 10px;
+      margin-top: auto;
+    }
+
+    /* Modal map */
+    #modalMapWrap {
+      display: none;
+    }
+
+    #modalMap {
+      height: 320px;
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    .walker {
+      width: 14px;
+      height: 14px;
+      background: #2563eb;
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header-title {
+        font-size: 1.2rem;
+      }
+
+      .header-container img {
+        width: 45px;
+        height: 45px;
+      }
+
+      table,
+      thead,
+      tbody,
+      th,
+      td,
+      tr {
+        display: block;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tr {
+        margin-bottom: 12px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 10px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      }
+
+      td {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px;
+        border: none;
+        border-bottom: 1px solid #eee;
+      }
+
+      td:last-child {
+        border-bottom: none;
+      }
+
+      td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #dc3545;
+      }
+
+      #modalMap {
+        height: 260px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Animated Background Blobs -->
+  <div class="animated-bg"></div>
+  <div class="animated-bg2"></div>
+
+  <!-- Header -->
+  <div class="header-container">
+    <a href="student.html"><img src="images/rushuelogo.jpg" alt="UE Logo"></a>
+    <h2 class="header-title">Room Navigation</h2>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container">
+    <h2>Select Building</h2>
+    <select id="buildingSelect">
+      <option value="EN">Engineering (EN)</option>
+      <option value="TYK">Tan Yan Kee (TYK)</option>
+      <option value="LCT">Lucio Tan Building (LCT)</option>
+      <option value="UEC_MAIN">Main Campus (UEC_MAIN)</option>
+    </select>
+    <input type="text" id="search" placeholder="Search room (e.g. EN-401, student_affairs_office)...">
+    <table id="roomTable">
+      <thead>
+        <tr>
+          <th>Room</th>
+          <th>Type</th>
+          <th>Floor</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Room Details Modal -->
+  <div class="modal fade" id="roomModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title">Room Details</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p><strong>Room:</strong> <span id="modalRoom"></span></p>
+
+          <!-- Hidden when showing a map -->
+          <p id="modalTypeWrap"><strong>Type:</strong> <span id="modalType"></span></p>
+          <p id="modalFloorWrap"><strong>Floor:</strong> <span id="modalFloor"></span></p>
+
+          <p><strong>Description:</strong></p>
+          <p id="modalDescription" class="mb-3"></p>
+
+          <!-- Map -->
+          <div id="modalMapWrap" class="mt-2">
+            <p class="mb-2"><strong>Walking Path:</strong> <span id="pathSubtitle"></span></p>
+            <div id="modalMap"></div>
+            <small class="text-muted d-block mt-1">The blue dot animates along your path.</small>
+          </div>
+
+          <div id="mapError" class="alert alert-warning mt-2 d-none">
+            Couldn’t load the campus path map. Confirm that
+            <code>Ue_G.geojson</code> and <code>Ue_G_paths.geojson</code> are in the same folder, and labels match.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>&copy; 2025 University of the East | Rush UE</p>
+  </footer>
+
+  <!-- App Logic (Firebase + Table + Mapping + Routing) -->
+<script type="module">
+  /* ---------------- Firebase (v9 via ESM) ---------------- */
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+  import { getDatabase, ref, get, push } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAO-rovSC2xK4ZUV9pD3ixKViQl9x4xzNk",
+    authDomain: "rushue-234bc.firebaseapp.com",
+    databaseURL: "https://rushue-234bc-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "rushue-234bc",
+    storageBucket: "rushue-234bc.appspot.com",
+    messagingSenderId: "574730836644",
+    appId: "1:574730836644:web:ff7c9e9eae7fc498e4a431"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getDatabase(app);
+
+  // Ensure we have auth (rules require auth != null). Enable Anonymous Sign-in in Firebase Console.
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      try { await signInAnonymously(auth); } catch (e) { console.warn('Anon sign-in failed (check console setting).', e); }
+    }
+  });
+
+  /* ---------- CLICK LOGGER: writes to /click_events ---------- */
+  const VALID_BUILDINGS = new Set(['EN','TYK','LCT','UEC_MAIN']);
+  function normBuilding(code){
+    const s = String(code||'').trim().toUpperCase().replace(/\s+/g,'_');
+    if (s === 'UEC' || s === 'UECMAIN' || s === 'MAIN' || s === 'UEC_MAIN') return 'UEC_MAIN';
+    return VALID_BUILDINGS.has(s) ? s : 'EN';
+  }
+  async function logClick({building, room, target}){
+    try{
+      if (!auth.currentUser) { try{ await signInAnonymously(auth); }catch{} }
+      const now  = new Date();
+      const row = {
+        building : normBuilding(building),                     // must be EN|TYK|LCT|UEC_MAIN
+        room     : String(room||'(unknown)'),
+        target   : String(target||'(unknown)'),
+        date     : now.toISOString().slice(0,10),              // YYYY-MM-DD
+        ts_num   : now.getTime()                               // number
+      };
+      await push(ref(db, 'click_events'), row);
+    }catch(e){
+      // Do not interrupt UX if logging fails
+      console.warn('click_events push failed:', e?.message || e);
+    }
+  }
+
+  /* ---------- ROOM NAME → TARGET NODE MAPPING (includes pe_office → Gym) ---------- */
+  const ROOM_TO_TARGET = {
+    gymnasium: 'Gym',
+    'admission office': 'Admission Building',
+    admission_office: 'Admission Building',
+    campus_chapel: 'Chapel',
+    pe_office: 'Gym',
+
+    comptroller_office: 'Admission Building',
+    'comptroller office': 'Admission Building',
+
+    medical_dental_clinic: 'Medical Dental Clinic',
+    'medical dental clinic': 'Medical Dental Clinic',
+    med_dental: 'Medical Dental Clinic',
+
+    registrar: "Registrar's Office",
+    "registrar's office": "Registrar's Office",
+    student_affairs_office: 'Student Affairs Office',
+    canteen_santino: 'Canteen',
+    hrm_mock_building: 'HRM Mockup Building',
+
+    lucio_tan_building: 'Lucio Tan Building',
+    lct: 'Lucio Tan Building',
+
+    tyk: 'TYK 1st Elevator',
+    'tan yan kee': 'TYK 1st Elevator',
+    'tyk 1st elevator': 'TYK 1st Elevator',
+    'tyk first elevator': 'TYK 1st Elevator',
+    'tyk second elevator': 'TYK 2nd Elevator',
+    en_right: 'Engineering Building Right Side Entrance'
+  };
+
+  /* ---------- Aliases to match labels in your GeoJSON ---------- */
+  const ALIASES = {
+    GATE: ['Gate', 'Main Gate', 'Front Gate', 'UE Gate'],
+
+    EN_RIGHT: [
+      'Engineering Building Right Side Entrance',
+      'Engineering Building Right Entrance',
+      'EN Right Entrance', 'Engineering Right Side Entrance'
+    ],
+
+    TYK: ['Tan Yan Kee', 'TYK', 'TYK Building', 'Tan Yan Kee Building'],
+    TYK_ELEV_1: ['TYK 1st Elevator', 'Tyk First Elevator', 'TYK First Elevator'],
+    TYK_ELEV_2: ['TYK 2nd Elevator', 'Tyk Second Elevator', 'TYK Second Elevator'],
+
+    LCT: ['Lucio Tan', 'Lucio Tan Building', 'LCT', 'LCT Building'],
+    UEC_MAIN: ['UEC Main', 'UEC Main Building', 'Main Campus', 'Main Building', 'UEC_MAIN'],
+
+    GYM: ['Gym', 'Gymnasium'],
+    ADMISSION: ['Admission Building', 'Admission Office', 'Admissions', 'admission_office'],
+    CHAPEL: ['Chapel', 'Campus Chapel'],
+    CANTEEN: ['Canteen', 'Canteen Santino', 'canteen_santino'],
+    REGISTRAR: ["Registrar's Office", 'Registrar'],
+    SAO: ['Student Affairs Office', 'SAO'],
+    HRM: ['HRM Mockup Building', 'hrm_mock_building'],
+    MED_DENTAL: ['Medical Dental Clinic', 'medical dental clinic', 'medical_dental_clinic']
+  };
+
+  /* ---------- Small utils ---------- */
+  const norm = s => String(s || '').trim().toLowerCase();
+  const slug = s => norm(s).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const includesAny = (name, arr) => arr.some(a => norm(name).includes(norm(a)));
+
+  /* ---------- Embedded GeoJSON (replace content with your real files if desired) ---------- */
+  // Replace UE_G and UE_G_PATHS with the full contents of your real ue_g.geojson and ue_g_paths.geojson
+  const UE_G = {
+    "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "Cashier Office"
+      },
+      "geometry": {
+        "coordinates": [
+          120.976141,
+          14.658306
+        ],
+        "type": "Point"
+      },
+      "id": "001ff95d6b0448964db76bd4938fcdbf"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.977328,
+            14.659885
+          ],
+          [
+            120.976657,
+            14.659598
+          ],
+          [
+            120.976737,
+            14.659434
+          ],
+          [
+            120.977418,
+            14.659703
+          ],
+          [
+            120.977333,
+            14.659882
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "01967738c58c0fa2f4ab3b9974fa9659"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Field": "Beach Volley Court"
+      },
+      "geometry": {
+        "coordinates": [
+          120.977372,
+          14.659244
+        ],
+        "type": "Point"
+      },
+      "id": "0fdd77dbee3ba4de36f382f8dfbb11fa"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "Registrar's Office"
+      },
+      "geometry": {
+        "coordinates": [
+          120.97606,
+          14.658543
+        ],
+        "type": "Point"
+      },
+      "id": "17d77d14b11b9c816743c3d3e244d74f"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.976088,
+            14.659118
+          ],
+          [
+            120.975797,
+            14.658702
+          ],
+          [
+            120.97637,
+            14.658441
+          ],
+          [
+            120.976571,
+            14.658453
+          ],
+          [
+            120.977056,
+            14.658656
+          ],
+          [
+            120.977537,
+            14.658873
+          ],
+          [
+            120.977519,
+            14.658911
+          ],
+          [
+            120.977809,
+            14.659045
+          ],
+          [
+            120.977835,
+            14.659013
+          ],
+          [
+            120.97788,
+            14.659035
+          ],
+          [
+            120.977625,
+            14.659565
+          ],
+          [
+            120.977469,
+            14.659709
+          ],
+          [
+            120.976087,
+            14.659118
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "1db9b286c672f1bfaa8a34b63942804b"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "Chapel"
+      },
+      "geometry": {
+        "coordinates": [
+          120.975609,
+          14.658078
+        ],
+        "type": "Point"
+      },
+      "id": "1ea9553846a2f899bda5c5125c26fba7"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.977841,
+            14.660118
+          ],
+          [
+            120.977475,
+            14.659943
+          ],
+          [
+            120.977538,
+            14.659806
+          ],
+          [
+            120.977616,
+            14.659842
+          ],
+          [
+            120.977981,
+            14.659122
+          ],
+          [
+            120.977903,
+            14.659086
+          ],
+          [
+            120.977983,
+            14.658929
+          ],
+          [
+            120.978379,
+            14.659124
+          ],
+          [
+            120.97829,
+            14.659289
+          ],
+          [
+            120.978171,
+            14.65923
+          ],
+          [
+            120.977821,
+            14.65992
+          ],
+          [
+            120.977916,
+            14.65997
+          ],
+          [
+            120.977847,
+            14.660115
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "2e6daf93f8eb1f25a4959068461cbfe2"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.976149,
+            14.657996
+          ],
+          [
+            120.976124,
+            14.657853
+          ],
+          [
+            120.97618,
+            14.657835
+          ],
+          [
+            120.976208,
+            14.657821
+          ],
+          [
+            120.976231,
+            14.657919
+          ],
+          [
+            120.976311,
+            14.657964
+          ],
+          [
+            120.976318,
+            14.657983
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "335a91e08c3750b4337f98abc7e3a131"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.975482,
+            14.658097
+          ],
+          [
+            120.975738,
+            14.658149
+          ],
+          [
+            120.975762,
+            14.658012
+          ],
+          [
+            120.975509,
+            14.657963
+          ],
+          [
+            120.975482,
+            14.658093
+          ],
+          [
+            120.975483,
+            14.658099
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "3c7034ce0e0d9c99a268a6e40956aa57"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Entrance": "Main Entrance "
+      },
+      "geometry": {
+        "coordinates": [
+          120.976198,
+          14.65786
+        ],
+        "type": "Point"
+      },
+      "id": "4c81647b8604000d0676ea72f6f102b9"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Field": "Ue Field"
+      },
+      "geometry": {
+        "coordinates": [
+          120.976731,
+          14.659125
+        ],
+        "type": "Point"
+      },
+      "id": "54e65a1c8dbcf023be032bd00ee81bf2"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.976324,
+            14.658207
+          ],
+          [
+            120.976589,
+            14.658132
+          ],
+          [
+            120.976603,
+            14.658171
+          ],
+          [
+            120.976742,
+            14.658243
+          ],
+          [
+            120.976758,
+            14.658219
+          ],
+          [
+            120.977333,
+            14.658516
+          ],
+          [
+            120.977341,
+            14.658504
+          ],
+          [
+            120.977562,
+            14.658615
+          ],
+          [
+            120.977507,
+            14.658715
+          ],
+          [
+            120.977554,
+            14.658732
+          ],
+          [
+            120.977528,
+            14.658793
+          ],
+          [
+            120.977481,
+            14.658768
+          ],
+          [
+            120.977444,
+            14.65882
+          ],
+          [
+            120.977221,
+            14.658707
+          ],
+          [
+            120.977236,
+            14.658682
+          ],
+          [
+            120.977113,
+            14.658616
+          ],
+          [
+            120.977086,
+            14.658655
+          ],
+          [
+            120.977047,
+            14.658643
+          ],
+          [
+            120.97707,
+            14.65859
+          ],
+          [
+            120.976855,
+            14.658474
+          ],
+          [
+            120.976808,
+            14.658487
+          ],
+          [
+            120.976781,
+            14.658441
+          ],
+          [
+            120.976731,
+            14.658444
+          ],
+          [
+            120.976713,
+            14.658397
+          ],
+          [
+            120.976654,
+            14.658406
+          ],
+          [
+            120.976629,
+            14.658339
+          ],
+          [
+            120.976393,
+            14.658408
+          ],
+          [
+            120.976322,
+            14.658208
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "5ee5c31bc85270720ccd1b415e37b5c3"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "Admin Building ( Admin )"
+      },
+      "geometry": {
+        "coordinates": [
+          120.976094,
+          14.658429
+        ],
+        "type": "Point"
+      },
+      "id": "600d9586192040184088584d89f283e8"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "Comptroller's Building"
+      },
+      "geometry": {
+        "coordinates": [
+          120.976224,
+          14.658474
+        ],
+        "type": "Point"
+      },
+      "id": "63d8d85f05fc7b8ead0926e1f07e6a24"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "Gym"
+      },
+      "geometry": {
+        "coordinates": [
+          120.975557,
+          14.658325
+        ],
+        "type": "Point"
+      },
+      "id": "6a68de2c1fc473186545cb12177ae3b5"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.975702,
+            14.659098
+          ],
+          [
+            120.975532,
+            14.658873
+          ],
+          [
+            120.975604,
+            14.658817
+          ],
+          [
+            120.975647,
+            14.658875
+          ],
+          [
+            120.975721,
+            14.658826
+          ],
+          [
+            120.975693,
+            14.658785
+          ],
+          [
+            120.97577,
+            14.658715
+          ],
+          [
+            120.975934,
+            14.658933
+          ],
+          [
+            120.975706,
+            14.659097
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "6f04976fcf422f379729fb3d2862eb4b"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "Admission Office"
+      },
+      "geometry": {
+        "coordinates": [
+          120.975934,
+          14.658405
+        ],
+        "type": "Point"
+      },
+      "id": "7064a2f1a21d14e9ef6d6154e738a9d1"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.975846,
+            14.65841
+          ],
+          [
+            120.976266,
+            14.658225
+          ],
+          [
+            120.976363,
+            14.658436
+          ],
+          [
+            120.975943,
+            14.658618
+          ],
+          [
+            120.975847,
+            14.658409
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "746092b39c90dba0cc240038269b3b9b"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "HRM Mock Up Building"
+      },
+      "geometry": {
+        "coordinates": [
+          120.977735,
+          14.658825
+        ],
+        "type": "Point"
+      },
+      "id": "7fd74f2ed5df921e8ddc58882ea0b8c7"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.977606,
+            14.659111
+          ],
+          [
+            120.977467,
+            14.659408
+          ],
+          [
+            120.977233,
+            14.659303
+          ],
+          [
+            120.977371,
+            14.659012
+          ],
+          [
+            120.977605,
+            14.65911
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "84fa4ff309c2195b4a0d1b295fccfcec"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.977845,
+            14.658987
+          ],
+          [
+            120.977811,
+            14.65905
+          ],
+          [
+            120.977525,
+            14.658906
+          ],
+          [
+            120.977557,
+            14.658843
+          ],
+          [
+            120.977844,
+            14.658987
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "85dbbfd1dc6e68b7d55565c5c644985f"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.975641,
+            14.658488
+          ],
+          [
+            120.975629,
+            14.658532
+          ],
+          [
+            120.975455,
+            14.658508
+          ],
+          [
+            120.975463,
+            14.658442
+          ],
+          [
+            120.975417,
+            14.658431
+          ],
+          [
+            120.975509,
+            14.657961
+          ],
+          [
+            120.975764,
+            14.658006
+          ],
+          [
+            120.975674,
+            14.65849
+          ],
+          [
+            120.975641,
+            14.658486
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "a94f4679d358c358cca700009da2b450"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.976084,
+            14.658073
+          ],
+          [
+            120.976083,
+            14.658002
+          ],
+          [
+            120.976151,
+            14.657997
+          ],
+          [
+            120.976154,
+            14.658068
+          ],
+          [
+            120.976088,
+            14.658071
+          ],
+          [
+            120.976352,
+            14.658067
+          ],
+          [
+            120.976379,
+            14.658034
+          ],
+          [
+            120.976316,
+            14.657984
+          ],
+          [
+            120.976286,
+            14.658019
+          ],
+          [
+            120.976353,
+            14.658065
+          ],
+          [
+            120.976149,
+            14.658
+          ],
+          [
+            120.976288,
+            14.658014
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "ac3bd0567fde9c0645a4064b6065877a"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "HRM Mock Up Building #2"
+      },
+      "geometry": {
+        "coordinates": [
+          120.977649,
+          14.658923
+        ],
+        "type": "Point"
+      },
+      "id": "ad09138797b0308277d2be5a0e999516"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.975636,
+            14.658729
+          ],
+          [
+            120.975575,
+            14.658624
+          ],
+          [
+            120.975673,
+            14.658569
+          ],
+          [
+            120.975732,
+            14.658672
+          ],
+          [
+            120.975639,
+            14.658724
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "b27ff01fb035eedf7782b6f9ba048178"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.976527,
+            14.659504
+          ],
+          [
+            120.97598,
+            14.659272
+          ],
+          [
+            120.976036,
+            14.659149
+          ],
+          [
+            120.976582,
+            14.659381
+          ],
+          [
+            120.976528,
+            14.659502
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "b3a911c3c54b9e840a27662c6ed5d55b"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "Guard House"
+      },
+      "geometry": {
+        "coordinates": [
+          120.976311,
+          14.658011
+        ],
+        "type": "Point"
+      },
+      "id": "b467ef707accb1d631d0b1270c439542"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "Old Academic Building"
+      },
+      "geometry": {
+        "coordinates": [
+          120.976364,
+          14.659366
+        ],
+        "type": "Point"
+      },
+      "id": "b6b333cf7040ae4644d6e79982578d49"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.977917,
+            14.658806
+          ],
+          [
+            120.977834,
+            14.658955
+          ],
+          [
+            120.97757,
+            14.658817
+          ],
+          [
+            120.977651,
+            14.658669
+          ],
+          [
+            120.977918,
+            14.658804
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "b9cf7a025ff35bc5c6d125b7981041d1"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Entrance": "Back Entrance ( Entry Point of Vehicle )"
+      },
+      "geometry": {
+        "coordinates": [
+          120.975512,
+          14.657939
+        ],
+        "type": "Point"
+      },
+      "id": "c2ea42da56637c97d191075eb875ec83"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "Lucio Tan Building ( LCT )"
+      },
+      "geometry": {
+        "coordinates": [
+          120.976994,
+          14.659653
+        ],
+        "type": "Point"
+      },
+      "id": "c47537d8a99880fb8a4b15a021503de2"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "Tan Yan Kee Building ( TYK )"
+      },
+      "geometry": {
+        "coordinates": [
+          120.977022,
+          14.658458
+        ],
+        "type": "Point"
+      },
+      "id": "ff62bc69d16f66c3df7727bfa766a055"
+    }
+  ],
+  "type": "FeatureCollection"
+
+    };
+
+  const UE_G_PATHS = {
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 2nd Elevator",
+        "to": "Engineering Building Right Side Entrance"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.977177,
+            14.658614
+          ],
+          [
+            120.977226,
+            14.658534
+          ],
+          [
+            120.977765,
+            14.658799
+          ],
+          [
+            120.977956,
+            14.658907
+          ],
+          [
+            120.97797,
+            14.659018
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "04b506ecabf97002fc4d97341cc802bf"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "Gate",
+        "to": "Registrar's Office"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976197,
+            14.657843
+          ],
+          [
+            120.976414,
+            14.658365
+          ],
+          [
+            120.97609,
+            14.658475
+          ],
+          [
+            120.976047,
+            14.658389
+          ],
+          [
+            120.976089,
+            14.658427
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "09d5b0fc0447bc55475286f866d50aa6"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "Gate",
+        "to": "HRM Mockup Building"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976201,
+            14.657857
+          ],
+          [
+            120.976406,
+            14.658362
+          ],
+          [
+            120.976665,
+            14.658304
+          ],
+          [
+            120.977027,
+            14.658462
+          ],
+          [
+            120.977399,
+            14.658605
+          ],
+          [
+            120.977735,
+            14.658788
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "0a30429547f1f215d9dad52a5dae1c52"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "Gate",
+        "to": "Gym"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976202,
+            14.657851
+          ],
+          [
+            120.976415,
+            14.658357
+          ],
+          [
+            120.97594,
+            14.65856
+          ],
+          [
+            120.975767,
+            14.658653
+          ],
+          [
+            120.975699,
+            14.658589
+          ],
+          [
+            120.975643,
+            14.658523
+          ],
+          [
+            120.975675,
+            14.658313
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "17b68611cc6b76d17030193e56c3a799"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "Gate",
+        "to": "Admission Building"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976199,
+            14.657852
+          ],
+          [
+            120.976413,
+            14.658361
+          ],
+          [
+            120.976086,
+            14.658472
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "18bdb7fbf6bafd18bb89d45e70bba7bf"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 1st Elevator",
+        "to": "Student Affairs Office"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976644,
+            14.658362
+          ],
+          [
+            120.976745,
+            14.658318
+          ],
+          [
+            120.97663,
+            14.658263
+          ],
+          [
+            120.976384,
+            14.6583
+          ],
+          [
+            120.97641,
+            14.65836
+          ],
+          [
+            120.975741,
+            14.65866
+          ],
+          [
+            120.976074,
+            14.659115
+          ],
+          [
+            120.976043,
+            14.659173
+          ],
+          [
+            120.976183,
+            14.659236
+          ],
+          [
+            120.976161,
+            14.659283
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "1a5a2938e0ccb6b69fbb46a8b84afb5b"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Field": "Ue Field"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976088,
+            14.659118
+          ],
+          [
+            120.975797,
+            14.658702
+          ],
+          [
+            120.97637,
+            14.658441
+          ],
+          [
+            120.976571,
+            14.658453
+          ],
+          [
+            120.977056,
+            14.658656
+          ],
+          [
+            120.977537,
+            14.658873
+          ],
+          [
+            120.977519,
+            14.658911
+          ],
+          [
+            120.977809,
+            14.659045
+          ],
+          [
+            120.977835,
+            14.659013
+          ],
+          [
+            120.97788,
+            14.659035
+          ],
+          [
+            120.977625,
+            14.659565
+          ],
+          [
+            120.977469,
+            14.659709
+          ],
+          [
+            120.976087,
+            14.659118
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "1db9b286c672f1bfaa8a34b63942804b"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 2nd Elevator",
+        "to": "Chapel"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.977179,
+            14.658611
+          ],
+          [
+            120.977227,
+            14.65853
+          ],
+          [
+            120.976621,
+            14.65826
+          ],
+          [
+            120.976381,
+            14.658299
+          ],
+          [
+            120.976411,
+            14.658365
+          ],
+          [
+            120.975766,
+            14.658646
+          ],
+          [
+            120.975638,
+            14.658525
+          ],
+          [
+            120.975719,
+            14.658054
+          ],
+          [
+            120.975649,
+            14.658039
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "224c036a244a85716e034cca6f052c77"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "Gate",
+        "to": "Admission Building"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976197,
+            14.657858
+          ],
+          [
+            120.976391,
+            14.658304
+          ],
+          [
+            120.97642,
+            14.658367
+          ],
+          [
+            120.976196,
+            14.658439
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "265cb9995d22e4cfe481a3b74bd037c4"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 2nd Elevator",
+        "to": "Lobby"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.977173,
+            14.658616
+          ],
+          [
+            120.977233,
+            14.658535
+          ],
+          [
+            120.976635,
+            14.658268
+          ],
+          [
+            120.976374,
+            14.658303
+          ],
+          [
+            120.976086,
+            14.658422
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "27db1ae1bb9ad8fe46ed3dae57006ee4"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 2nd Elevator",
+        "to": "Gym"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.977173,
+            14.658613
+          ],
+          [
+            120.97723,
+            14.658532
+          ],
+          [
+            120.976628,
+            14.65826
+          ],
+          [
+            120.976379,
+            14.658304
+          ],
+          [
+            120.97641,
+            14.65836
+          ],
+          [
+            120.975766,
+            14.658646
+          ],
+          [
+            120.975632,
+            14.658521
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "32d2aec6d70f9c0e4549e74cef30dce8"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.976149,
+            14.657996
+          ],
+          [
+            120.976124,
+            14.657853
+          ],
+          [
+            120.97618,
+            14.657835
+          ],
+          [
+            120.976208,
+            14.657821
+          ],
+          [
+            120.976231,
+            14.657919
+          ],
+          [
+            120.976311,
+            14.657964
+          ],
+          [
+            120.976318,
+            14.657983
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "335a91e08c3750b4337f98abc7e3a131"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 2nd Elevator",
+        "to": "Admission Building"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.977181,
+            14.658612
+          ],
+          [
+            120.97723,
+            14.658527
+          ],
+          [
+            120.976629,
+            14.658264
+          ],
+          [
+            120.976358,
+            14.658308
+          ],
+          [
+            120.976079,
+            14.658428
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "3565deb50639760e13f913d9a2570d40"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 2nd Elevator",
+        "to": "Field"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.977179,
+            14.658617
+          ],
+          [
+            120.977232,
+            14.658533
+          ],
+          [
+            120.977024,
+            14.658448
+          ],
+          [
+            120.976918,
+            14.658673
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "3570f147caa95767a5b9327b3e28bf37"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "Gate",
+        "to": "Chapel"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976199,
+            14.65785
+          ],
+          [
+            120.976416,
+            14.658359
+          ],
+          [
+            120.975766,
+            14.65865
+          ],
+          [
+            120.975639,
+            14.658524
+          ],
+          [
+            120.975723,
+            14.658053
+          ],
+          [
+            120.975646,
+            14.658039
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "4610071241e1ac51e433d3a26d16f215"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 1st Elevator",
+        "to": "Field"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.97665,
+            14.658362
+          ],
+          [
+            120.976735,
+            14.658322
+          ],
+          [
+            120.977028,
+            14.658446
+          ],
+          [
+            120.976919,
+            14.658668
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "59148557204490e5f4d09ab0f511dba7"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 1st Elevator",
+        "to": "Lobby"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976648,
+            14.658362
+          ],
+          [
+            120.976739,
+            14.658317
+          ],
+          [
+            120.976623,
+            14.658261
+          ],
+          [
+            120.976491,
+            14.658284
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "5b28c5581df796e3bbec878b3969aee5"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 2nd Elevator",
+        "to": "Student Affairs Office"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.977177,
+            14.658612
+          ],
+          [
+            120.97723,
+            14.658534
+          ],
+          [
+            120.976626,
+            14.658264
+          ],
+          [
+            120.976386,
+            14.658298
+          ],
+          [
+            120.976416,
+            14.658356
+          ],
+          [
+            120.975737,
+            14.658663
+          ],
+          [
+            120.976071,
+            14.659114
+          ],
+          [
+            120.976043,
+            14.659174
+          ],
+          [
+            120.976187,
+            14.659231
+          ],
+          [
+            120.97616,
+            14.659279
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "61789e56393ceb8b8376183a8f827dde"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 1st Elevator",
+        "to": "Engineering Building Right Side Entrance"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976646,
+            14.658362
+          ],
+          [
+            120.976731,
+            14.658318
+          ],
+          [
+            120.977752,
+            14.658797
+          ],
+          [
+            120.977964,
+            14.658909
+          ],
+          [
+            120.977968,
+            14.65901
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "6719132df28000ff2e09203dc14fe624"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 1st Elevator",
+        "to": "HRM Mockup Building"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976652,
+            14.658363
+          ],
+          [
+            120.976736,
+            14.658321
+          ],
+          [
+            120.977721,
+            14.658786
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "72a44a0e529c5c05bd05d18cc4301b9b"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "Gate",
+        "to": "Canteen"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976199,
+            14.657851
+          ],
+          [
+            120.976395,
+            14.658304
+          ],
+          [
+            120.976605,
+            14.658269
+          ],
+          [
+            120.977399,
+            14.658605
+          ],
+          [
+            120.977321,
+            14.658722
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "75e4c50bf206b018af30b511e7308c5e"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 1st Elevator",
+        "to": "Admission Building"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976649,
+            14.658363
+          ],
+          [
+            120.976679,
+            14.658343
+          ],
+          [
+            120.976637,
+            14.6583
+          ],
+          [
+            120.976103,
+            14.658492
+          ],
+          [
+            120.976045,
+            14.658388
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "7828c9ec318fcf79cce6919528931294"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "HRM Mock Up Building"
+      },
+      "geometry": {
+        "coordinates": [
+          120.977735,
+          14.658825
+        ],
+        "type": "Point"
+      },
+      "id": "7fd74f2ed5df921e8ddc58882ea0b8c7"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 2nd Elevator",
+        "to": "Lucio Tan Building"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.977182,
+            14.658612
+          ],
+          [
+            120.977232,
+            14.658528
+          ],
+          [
+            120.977023,
+            14.658449
+          ],
+          [
+            120.976947,
+            14.658609
+          ],
+          [
+            120.977038,
+            14.65865
+          ],
+          [
+            120.976654,
+            14.659433
+          ],
+          [
+            120.977064,
+            14.659598
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "82cbcd1d7a3e3e0b43bcba4259d44719"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "Gate",
+        "to": "Tyk First Elevator"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976195,
+            14.657865
+          ],
+          [
+            120.976411,
+            14.658361
+          ],
+          [
+            120.976651,
+            14.658299
+          ],
+          [
+            120.976683,
+            14.658347
+          ],
+          [
+            120.976646,
+            14.658365
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "8347f902d9878f48c3f29ee13319e6ad"
+    },
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "coordinates": [
+          [
+            120.976106,
+            14.658494
+          ],
+          [
+            120.976417,
+            14.658361
+          ],
+          [
+            120.976383,
+            14.658299
+          ],
+          [
+            120.976626,
+            14.658261
+          ],
+          [
+            120.976735,
+            14.65832
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "8e0e882e9d1dbe431fd58c32dff65cd9"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 2nd Elevator",
+        "to": "HRM Mockup Building"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.977178,
+            14.658613
+          ],
+          [
+            120.977222,
+            14.658542
+          ],
+          [
+            120.977746,
+            14.658819
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "aa96838b7e6bade33161fe079443d546"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Building": "HRM Mock Up Building #2"
+      },
+      "geometry": {
+        "coordinates": [
+          120.977649,
+          14.658923
+        ],
+        "type": "Point"
+      },
+      "id": "ad09138797b0308277d2be5a0e999516"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "Gate",
+        "to": "Lucio Tan Building"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976197,
+            14.657846
+          ],
+          [
+            120.976416,
+            14.658363
+          ],
+          [
+            120.976357,
+            14.65838
+          ],
+          [
+            120.976394,
+            14.658467
+          ],
+          [
+            120.976561,
+            14.658476
+          ],
+          [
+            120.977021,
+            14.658674
+          ],
+          [
+            120.976685,
+            14.659371
+          ],
+          [
+            120.976653,
+            14.659431
+          ],
+          [
+            120.977069,
+            14.659595
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "b3b5b371c6cd357ffcb2eee6eed2aff8"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "Gate",
+        "to": "Student Affairs Office"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976203,
+            14.657847
+          ],
+          [
+            120.976416,
+            14.658361
+          ],
+          [
+            120.975926,
+            14.658571
+          ],
+          [
+            120.975737,
+            14.658665
+          ],
+          [
+            120.975905,
+            14.658878
+          ],
+          [
+            120.976068,
+            14.659106
+          ],
+          [
+            120.976043,
+            14.659172
+          ],
+          [
+            120.976185,
+            14.659232
+          ],
+          [
+            120.976168,
+            14.659265
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "bdd6d2ff725f6039d8af22bfcf68a5eb"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Entrance": "Back Entrance ( Entry Point of Vehicle )"
+      },
+      "geometry": {
+        "coordinates": [
+          120.975512,
+          14.657939
+        ],
+        "type": "Point"
+      },
+      "id": "c2ea42da56637c97d191075eb875ec83"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 1st Elevator",
+        "to": "Lucio Tan Building"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976646,
+            14.658362
+          ],
+          [
+            120.976744,
+            14.658321
+          ],
+          [
+            120.976629,
+            14.658261
+          ],
+          [
+            120.976385,
+            14.658303
+          ],
+          [
+            120.976413,
+            14.658366
+          ],
+          [
+            120.975735,
+            14.658663
+          ],
+          [
+            120.97607,
+            14.659112
+          ],
+          [
+            120.976039,
+            14.659175
+          ],
+          [
+            120.976183,
+            14.659236
+          ],
+          [
+            120.97707,
+            14.659601
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "cefc93c163749b82ea95db9ba9ad2e60"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 1st Elevator",
+        "to": "Gym"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976647,
+            14.658358
+          ],
+          [
+            120.976742,
+            14.658314
+          ],
+          [
+            120.976614,
+            14.658261
+          ],
+          [
+            120.976389,
+            14.658298
+          ],
+          [
+            120.976407,
+            14.658359
+          ],
+          [
+            120.975769,
+            14.658649
+          ],
+          [
+            120.975637,
+            14.658517
+          ],
+          [
+            120.97572,
+            14.65806
+          ],
+          [
+            120.975652,
+            14.658038
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "d666f7da15c42c544472f4ea55e47844"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "Gate",
+        "to": "Tyk Second Elevator"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976201,
+            14.657847
+          ],
+          [
+            120.976415,
+            14.658358
+          ],
+          [
+            120.976651,
+            14.658301
+          ],
+          [
+            120.97713,
+            14.658541
+          ],
+          [
+            120.977095,
+            14.658594
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "de2e9c6f673ec49061d6d7dab4f67903"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "Gate",
+        "to": "Engineering Building Right Side Entrance"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976204,
+            14.657843
+          ],
+          [
+            120.976389,
+            14.658304
+          ],
+          [
+            120.976602,
+            14.658268
+          ],
+          [
+            120.977132,
+            14.658501
+          ],
+          [
+            120.977517,
+            14.658649
+          ],
+          [
+            120.977694,
+            14.658759
+          ],
+          [
+            120.977927,
+            14.658892
+          ],
+          [
+            120.977964,
+            14.659012
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "de49cc62abba79b2cc3ad6262987515f"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 1st Elevator",
+        "to": "Gym"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976647,
+            14.658365
+          ],
+          [
+            120.976737,
+            14.658317
+          ],
+          [
+            120.976625,
+            14.658263
+          ],
+          [
+            120.976384,
+            14.658298
+          ],
+          [
+            120.976415,
+            14.65836
+          ],
+          [
+            120.975766,
+            14.658649
+          ],
+          [
+            120.975642,
+            14.658526
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "e363602b2f43f0ac0ffa40c589583607"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "Gate",
+        "to": "Engineering Building Left Side Entrance"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976211,
+            14.657858
+          ],
+          [
+            120.976416,
+            14.65836
+          ],
+          [
+            120.975741,
+            14.658663
+          ],
+          [
+            120.976061,
+            14.659104
+          ],
+          [
+            120.976043,
+            14.659168
+          ],
+          [
+            120.976571,
+            14.659405
+          ],
+          [
+            120.977068,
+            14.659597
+          ],
+          [
+            120.977404,
+            14.659732
+          ],
+          [
+            120.977612,
+            14.659798
+          ],
+          [
+            120.977553,
+            14.659895
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "f7b386db2efffe6b8db22829211f8789"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "TYK 1st Elevator",
+        "to": "Canteen"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976646,
+            14.658368
+          ],
+          [
+            120.976677,
+            14.658343
+          ],
+          [
+            120.976685,
+            14.658323
+          ],
+          [
+            120.977397,
+            14.658604
+          ],
+          [
+            120.977337,
+            14.658695
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "f8ae55e1c76a40c10a371c9cbc9394df"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "path",
+        "from": "Gate",
+        "to": "Ue Parking"
+      },
+      "geometry": {
+        "coordinates": [
+          [
+            120.976201,
+            14.65783
+          ],
+          [
+            120.976307,
+            14.658085
+          ],
+          [
+            120.976372,
+            14.658114
+          ],
+          [
+            120.976505,
+            14.658083
+          ],
+          [
+            120.976552,
+            14.658082
+          ],
+          [
+            120.977699,
+            14.65867
+          ],
+          [
+            120.978049,
+            14.658874
+          ],
+          [
+            120.978445,
+            14.659089
+          ],
+          [
+            120.978479,
+            14.659186
+          ],
+          [
+            120.978375,
+            14.65933
+          ],
+          [
+            120.97831,
+            14.659358
+          ],
+          [
+            120.978211,
+            14.659304
+          ]
+        ],
+        "type": "LineString"
+      },
+      "id": "fa373d1de0a2cb129d277c4995e44bd4"
+    }
+  ],
+  "type": "FeatureCollection"
+
+  };
+
+  /* ---------- Build the path graph from embedded UE_G_PATHS ---------- */
+  let GRAPH = null, ALL_NODE_NAMES = [];
+
+  async function ensureGraphReady() {
+    if (GRAPH) return GRAPH;
+
+    // use embedded data instead of fetch
+    const data = UE_G_PATHS;
+
+    const adjDir = new Map();   // directed
+    const edges = [];
+    const nodes = new Set();
+
+    for (const f of (data.features || [])) {
+      const p = f.properties || {};
+      const from = (p.from || p.From || p.start || '').toString().trim();
+      const to = (p.to || p.To || p.end || '').toString().trim();
+      if (!from || !to) continue;
+      nodes.add(from); nodes.add(to);
+      if (!adjDir.has(from)) adjDir.set(from, []);
+      adjDir.get(from).push({ to, feature: f });
+      edges.push([from, to, f]);
+    }
+
+    ALL_NODE_NAMES = Array.from(nodes);
+
+    GRAPH = {
+      edges, adjDir, nodes,
+      getAdjUndir() {
+        if (this.adjUndir) return this.adjUndir;
+        const m = new Map();
+        const add = (a, b, f) => { if (!m.has(a)) m.set(a, []); m.get(a).push({ to: b, feature: f }); };
+        for (const [a, b, f] of edges) { add(a, b, f); add(b, a, f); }
+        this.adjUndir = m;
+        return m;
+      }
+    };
+    return GRAPH;
+  }
+
+  function resolveNode(label) {
+    const q = norm(label);
+    let hit = ALL_NODE_NAMES.find(n => norm(n) === q) ||
+              ALL_NODE_NAMES.find(n => norm(n).includes(q) || q.includes(norm(n)));
+    if (hit) return hit;
+
+    for (const arr of Object.values(ALIASES)) {
+      if (arr.some(a => q.includes(norm(a)))) {
+        hit = ALL_NODE_NAMES.find(n => arr.some(a => norm(n).includes(norm(a))));
+        if (hit) return hit;
+      }
+    }
+    hit = ALL_NODE_NAMES.find(n => q.split(/\s+/).every(tok => norm(n).includes(tok)));
+    return hit || null;
+  }
+
+  function bfsRoute(graph, start, goal, undirected = false) {
+    const adj = undirected ? graph.getAdjUndir() : graph.adjDir;
+    const q = [start];
+    const parent = new Map([[start, null]]);
+    let reached = null;
+
+    while (q.length) {
+      const cur = q.shift();
+      if (cur === goal) { reached = cur; break; }
+      for (const e of (adj.get(cur) || [])) {
+        if (!parent.has(e.to)) {
+          parent.set(e.to, { prev: cur, feature: e.feature });
+          q.push(e.to);
+        }
+      }
+    }
+    if (!reached) return null;
+
+    const chain = [];
+    let cur = reached;
+    while (parent.get(cur)) {
+      chain.push(parent.get(cur).feature);
+      cur = parent.get(cur).prev;
+    }
+    return chain.reverse();
+  }
+
+  async function findRouteFromGate(toLabel) {
+    await ensureGraphReady();
+    const start = resolveNode('Gate');
+    const goal  = resolveNode(toLabel);
+    if (!start || !goal) return null;
+
+    let chain = bfsRoute(GRAPH, start, goal, false);
+    if (!chain) chain = bfsRoute(GRAPH, start, goal, true);
+    if (!chain) return null;
+
+    const coords = [];
+    for (const f of chain) {
+      const g = f.geometry || {};
+      if (g.type === 'LineString') coords.push(...g.coordinates);
+      else if (g.type === 'MultiLineString') g.coordinates.forEach(arr => coords.push(...arr));
+    }
+    return { features: chain, coordinates: coords, start, goal };
+  }
+
+  // modal leaflet map
+  let modalMap = null, buildingsLayer = null, routeLayer = null, progressLine = null, walker = null, animRAF = null;
+
+  function ensureModalMap() {
+    if (modalMap) return modalMap;
+    const el = document.getElementById('modalMap');
+    modalMap = L.map(el, { zoomControl: true }).setView([14.6575, 120.983], 18);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 22 }).addTo(modalMap);
+    setTimeout(() => modalMap.invalidateSize(), 0);
+    return modalMap;
+  }
+  async function addBuildingsOverlay() {
+    try {
+      // use embedded UE_G instead of fetching file
+      const data = UE_G;
+      buildingsLayer = L.geoJSON(data, { style: { color: '#9ca3af', weight: 1, fillOpacity: 0.2 } }).addTo(modalMap);
+    } catch (e) {
+      console.warn('No buildings overlay:', e.message || e);
+    }
+  }
+  function clearRouteLayers() {
+    if (routeLayer) { modalMap.removeLayer(routeLayer); routeLayer = null; }
+    if (progressLine) { modalMap.removeLayer(progressLine); progressLine = null; }
+    if (walker) { modalMap.removeLayer(walker); walker = null; }
+  }
+  function destroyModalMap() {
+    if (animRAF) { cancelAnimationFrame(animRAF); animRAF = null; }
+    clearRouteLayers();
+    if (buildingsLayer) { modalMap.removeLayer(buildingsLayer); buildingsLayer = null; }
+    if (modalMap) { modalMap.remove(); modalMap = null; }
+  }
+
+  function drawAndAnimate(coords) {
+    clearRouteLayers();
+    const merged = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } };
+    routeLayer = L.geoJSON(merged, { style: { color: '#60a5fa', weight: 5, opacity: 0.25 } }).addTo(modalMap);
+    modalMap.fitBounds(routeLayer.getBounds(), { padding: [20, 20] });
+
+    const latlngs = coords.map(c => L.latLng(c[1], c[0]));
+    progressLine = L.polyline([latlngs[0]], { color: '#2563eb', weight: 6 }).addTo(modalMap);
+    walker = L.marker(latlngs[0], { icon: L.divIcon({ className: 'walker' }), zIndexOffset: 1000 }).addTo(modalMap);
+
+    const SPEED = 2.2 * 1.15; // m/s
+    const segs = [];
+    for (let i = 0; i < latlngs.length - 1; i++) {
+      const a = latlngs[i], b = latlngs[i + 1];
+      const d = modalMap.distance(a, b);
+      segs.push({ a, b, dur: d / SPEED * 1000 });
+    }
+    let i = 0, t0 = performance.now();
+    const step = (now) => {
+      const s = segs[i]; if (!s) { animRAF = null; return; }
+      const t = Math.min(1, (now - t0) / s.dur);
+      const cur = L.latLng(s.a.lat + (s.b.lat - s.a.lat) * t, s.a.lng + (s.b.lng - s.a.lng) * t);
+      walker.setLatLng(cur);
+      const pts = progressLine.getLatLngs();
+      if (!pts.length || modalMap.distance(pts[pts.length - 1], cur) > 0.5) { pts.push(cur); progressLine.setLatLngs(pts); }
+      if (t >= 1) { i++; t0 = now; const pts2 = progressLine.getLatLngs(); pts2.push(s.b); progressLine.setLatLngs(pts2); walker.setLatLng(s.b); }
+      animRAF = requestAnimationFrame(step);
+    };
+    animRAF = requestAnimationFrame(step);
+  }
+
+  // pick a target room where the roomnum data and selected building is going
+  function pickTargetForRoom(roomNum, roomData, selectedBuilding) {
+    const cands = [
+      String(roomNum || ''),
+      norm(roomNum),
+      slug(roomNum),
+      String(roomData?.name || ''),
+      norm(roomData?.name || ''),
+      slug(roomData?.name || '')
+    ];
+    for (const c of cands) {
+      if (ROOM_TO_TARGET[c]) return ROOM_TO_TARGET[c];
+    }
+    switch (selectedBuilding) {
+      case 'EN': return 'Engineering Building Right Side Entrance';
+      case 'TYK': return 'TYK 1st Elevator';
+      case 'LCT': return 'Lucio Tan Building';
+      case 'UEC_MAIN': return 'UEC Main';
+      default: return null;
+    }
+  }
+
+  /* ---------- Wire a row to open modal & show route + LOG CLICK ---------- */
+  function attachRoomRowHandler(row, roomNum, roomData) {
+    const modalEl = document.getElementById('roomModal');
+    const modalRoom = document.getElementById('modalRoom');
+    const modalType = document.getElementById('modalType');
+    const modalFloor = document.getElementById('modalFloor');
+    const modalDescription = document.getElementById('modalDescription');
+    const modalTypeWrap = document.getElementById('modalTypeWrap');
+    const modalFloorWrap = document.getElementById('modalFloorWrap');
+    const modalMapWrap = document.getElementById('modalMapWrap');
+    const pathSubtitle = document.getElementById('pathSubtitle');
+    const mapError = document.getElementById('mapError');
+    const buildingSelect = document.getElementById('buildingSelect');
+
+    row.addEventListener('click', async () => {
+      const selectedBuilding = buildingSelect?.value || 'EN';
+      const target = pickTargetForRoom(roomNum, roomData, selectedBuilding);
+
+      // 🔴 LOG THE CLICK HERE
+      logClick({
+        building: selectedBuilding,
+        room: roomNum,
+        target: target || roomData?.description || 'room-row'
+      });
+
+      // Fill modal details
+      modalRoom.textContent = roomNum;
+      modalType.textContent = roomData?.type || '';
+      modalFloor.textContent = roomData?.floor ?? '';
+      modalDescription.textContent = roomData?.description || 'No description available';
+
+      // Decide target and toggle map visibility
+      const showMap = Boolean(target);
+      modalTypeWrap.style.display = showMap ? 'none' : '';
+      modalFloorWrap.style.display = showMap ? 'none' : '';
+      modalMapWrap.style.display = showMap ? 'block' : 'none';
+      pathSubtitle.textContent = showMap ? `Gate → ${target}` : '';
+      mapError.classList.add('d-none');
+
+      // Open modal
+      const bsModal = new bootstrap.Modal(modalEl);
+      bsModal.show();
+
+      const onShown = async () => {
+        if (!showMap) return;
+        try {
+          ensureModalMap();
+          await addBuildingsOverlay();
+          await ensureGraphReady();
+          const route = await findRouteFromGate(target);
+          if (!route || !route.coordinates?.length) {
+            mapError.classList.remove('d-none');
+            return;
+          }
+          mapError.classList.add('d-none');
+          drawAndAnimate(route.coordinates);
+        } catch (e) {
+          console.error(e);
+          mapError.classList.remove('d-none');
+        }
+      };
+
+      const onHidden = () => {
+        destroyModalMap();
+        modalEl.removeEventListener('shown.bs.modal', onShown);
+        modalEl.removeEventListener('hidden.bs.modal', onHidden);
+      };
+
+      modalEl.addEventListener('shown.bs.modal', onShown);
+      modalEl.addEventListener('hidden.bs.modal', onHidden);
+    });
+  }
+
+  /* ---------- Table Load / Filter (from your Firebase) ---------- */
+  const buildingSelect = document.getElementById('buildingSelect');
+  const search = document.getElementById('search');
+  const tableBody = document.querySelector('#roomTable tbody');
+
+  async function loadRooms(buildingCode) {
+    tableBody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
+    const buildingRef = ref(db, buildingCode);
+    const snapshot = await get(buildingRef);
+
+    if (!snapshot.exists()) {
+      tableBody.innerHTML = "<tr><td colspan='4'>No data available</td></tr>";
+      return;
+    }
+
+    const building = snapshot.val();
+    let allRooms = {};
+
+    if (building.floors) {
+      for (const floorKey in building.floors) {
+        const floor = building.floors[floorKey];
+        if (floor.rooms) {
+          for (const roomKey in floor.rooms) {
+            allRooms[roomKey] = { ...floor.rooms[roomKey], floor: floorKey, name: roomKey };
+          }
+        }
+      }
+    }
+
+    if (building.special_rooms) {
+      for (const specialKey in building.special_rooms) {
+        allRooms[specialKey] = { ...building.special_rooms[specialKey], floor: "Special", name: specialKey };
+      }
+    }
+
+    displayRooms(allRooms);
+    search.oninput = () => filterRooms(allRooms, search.value);
+  }
+
+  function displayRooms(rooms) {
+    tableBody.innerHTML = '';
+    Object.entries(rooms).forEach(([roomNum, roomData]) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td data-label="Room">${roomNum}</td>
+        <td data-label="Type">${roomData.type || ''}</td>
+        <td data-label="Floor">${roomData.floor}</td>
+        <td data-label="Description">${roomData.description || ''}</td>
+      `;
+      attachRoomRowHandler(row, roomNum, roomData); // logs click + opens modal
+      tableBody.appendChild(row);
+    });
+  }
+
+  function filterRooms(rooms, query) {
+    const filtered = {};
+    const q = (query || '').toLowerCase();
+    Object.entries(rooms).forEach(([roomNum, roomData]) => {
+      const match =
+        roomNum.toLowerCase().includes(q) ||
+        (roomData.remarks && roomData.remarks.toLowerCase().includes(q)) ||
+        (roomData.type && roomData.type.toLowerCase().includes(q)) ||
+        (roomData.description && roomData.description.toLowerCase().includes(q)) ||
+        (roomData.floor && String(roomData.floor).toLowerCase().includes(q));
+      if (match) filtered[roomNum] = roomData;
+    });
+    displayRooms(filtered);
+  }
+
+  // init
+  loadRooms(buildingSelect.value);
+  buildingSelect.addEventListener('change', () => loadRooms(buildingSelect.value));
+</script>
+
+
+  <!-- Bootstrap Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

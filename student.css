@@ -1,0 +1,109 @@
+/* General Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    min-height: 100vh; /* Ensures full height */
+    background: linear-gradient(to bottom, #ffd6d6, #fff); /* Red-to-white gradient */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Navbar */
+.navbar {
+    padding: 15px 20px;
+}
+
+.navbar-brand img {
+    width: 70px;
+}
+
+.navbar-nav .nav-link {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Main Content Container */
+.container {
+    flex-grow: 1; /* Pushes footer down */
+}
+
+/* Hero Section */
+.header {
+    width: 100%;
+    padding: 50px 15px;
+    text-align: center;
+}
+
+.header h1 {
+    font-size: 42px;
+    font-weight: 700;
+    color: #333;
+}
+
+.header p {
+    font-size: 18px;
+    color: #555;
+}
+
+/* Image Styling */
+header img {
+    width: 100%;
+    max-width: 400px;  /* Limit image width */
+    height: auto; /* Maintain aspect ratio */
+    margin-bottom: 15px; /* Spacing between images */
+    border-radius: 15px; /* Soft rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smooth hover effect */
+}
+
+/* Hover Effect for Images */
+header img:hover {
+    transform: scale(1.05); /* Slight zoom effect */
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); /* Stronger shadow on hover */
+}
+
+/* Footer */
+footer {
+    background: rgba(255, 255, 255, 0.8);
+    color: #555;
+    text-align: center;
+    padding: 15px 0;
+    font-size: 14px;
+    border-top: 1px solid #ddd;
+}
+
+footer a {
+    color: #ff523b;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 32px;
+    }
+
+    .navbar-nav {
+        text-align: center;
+    }
+
+    .navbar-nav .nav-link {
+        padding: 10px;
+        display: block;
+    }
+
+    header img {
+        max-width: 90%;  /* Make images fit well on smaller screens */
+    }
+}

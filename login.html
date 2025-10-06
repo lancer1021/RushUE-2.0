@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://kit.fontawesome.com/64d58efce2.js" crossorigin="anonymous"></script>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <link rel="stylesheet" href="login-style.css" />
+  <title>Sign in & Sign up Form</title>
+
+  <!-- Minimal CSS for the eye toggle (does NOT change your layout) -->
+  <style>
+    .password-field {
+      position: relative;
+    }
+
+    .toggle-password {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      opacity: 0.95;
+      z-index: 5;
+      background: transparent;
+      border-radius: 6px;
+      transition: background .15s ease;
+    }
+
+    .toggle-password:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .toggle-password svg {
+      width: 18px;
+      height: 18px;
+      pointer-events: none;
+      /* let clicks pass to container */
+      fill: currentColor;
+      color: #666;
+    }
+
+    .toggle-password .eye-slash {
+      display: none;
+    }
+
+    /* start with eye visible */
+    /* If you want the icon a little lighter/darker matching your theme */
+    .toggle-password svg {
+      color: #666;
+    }
+
+    .toggle-password svg.active {
+      color: #dc3545;
+    }
+
+    /* active color when visible */
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="forms-container">
+      <div class="signin-signup">
+        <!-- Sign In Form -->
+        <form method="POST" class="sign-in-form">
+          <h2 class="title">Sign in</h2>
+          <div class="input-field">
+            <i class="fas fa-user"></i>
+            <input type="email" name="email" placeholder="Email" required />
+          </div>
+
+          <!-- Sign-in password with toggle -->
+          <div class="input-field password-field">
+            <i class="fas fa-lock"></i>
+            <input type="password" name="password" placeholder="Password" required id="signinPassword" />
+            <button type="button" class="toggle-password" data-target="signinPassword" aria-label="Show password">
+              <!-- Eye (visible) -->
+              <svg class="eye" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path
+                  d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7zm0 12a5 5 0 110-10 5 5 0 010 10z">
+                </path>
+                <circle cx="12" cy="12" r="2.5"></circle>
+              </svg>
+              <!-- Eye-slash (hidden by default) -->
+              <svg class="eye-slash" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path
+                  d="M2 4.27L3.28 3 21 20.72 19.73 22 16.9 19.17A11.82 11.82 0 0112 21c-5 0-9.27-3.11-11-7 .7-1.56 1.8-2.96 3.2-4.18L2 4.27zM7.53 8.18A5 5 0 0012 17a4.98 4.98 0 003.41-1.28l-1.44-1.44A2.99 2.99 0 0112 15a3 3 0 01-3-3c0-.35.07-.68.18-.99L7.53 8.18zm9.6-2.01L18.6 6.7C19.76 7.97 20.69 9.4 21 11c-1.73 3.89-6 7-11 7-1.14 0-2.24-.15-3.27-.42l1.6-1.6c.74.2 1.52.3 2.37.3a5 5 0 003.41-8.57L17.13 5.9z">
+                </path>
+              </svg>
+            </button>
+          </div>
+
+          <input type="submit" value="Login" class="btn solid" />
+          <p class="social-text"></p>
+        </form>
+
+        <!-- Sign Up Form -->
+        <form class="sign-up-form">
+          <h2 class="title">Sign up</h2>
+          <div class="input-field">
+            <i class="fas fa-envelope"></i>
+            <input type="email" id="email" name="email" placeholder="Email" required />
+          </div>
+          <div class="input-field">
+            <i class="fas fa-user"></i>
+            <input type="text" id="firstName" name="firstName" placeholder="First Name" required />
+          </div>
+          <div class="input-field">
+            <i class="fas fa-user"></i>
+            <input type="text" id="lastName" name="lastName" placeholder="Last Name" required />
+          </div>
+
+          <!-- Sign-up password with toggle -->
+          <div class="input-field password-field">
+            <i class="fas fa-lock"></i>
+            <input type="password" id="password" name="password" placeholder="Password" required />
+            <button type="button" class="toggle-password" data-target="password" aria-label="Show password">
+              <svg class="eye" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path
+                  d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7zm0 12a5 5 0 110-10 5 5 0 010 10z">
+                </path>
+                <circle cx="12" cy="12" r="2.5"></circle>
+              </svg>
+              <svg class="eye-slash" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path
+                  d="M2 4.27L3.28 3 21 20.72 19.73 22 16.9 19.17A11.82 11.82 0 0112 21c-5 0-9.27-3.11-11-7 .7-1.56 1.8-2.96 3.2-4.18L2 4.27zM7.53 8.18A5 5 0 0012 17a4.98 4.98 0 003.41-1.28l-1.44-1.44A2.99 2.99 0 0112 15a3 3 0 01-3-3c0-.35.07-.68.18-.99L7.53 8.18zm9.6-2.01L18.6 6.7C19.76 7.97 20.69 9.4 21 11c-1.73 3.89-6 7-11 7-1.14 0-2.24-.15-3.27-.42l1.6-1.6c.74.2 1.52.3 2.37.3a5 5 0 003.41-8.57L17.13 5.9z">
+                </path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Confirm password with toggle -->
+          <div class="input-field password-field">
+            <i class="fas fa-lock"></i>
+            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm Password"
+              required />
+            <button type="button" class="toggle-password" data-target="confirmPassword" aria-label="Show password">
+              <svg class="eye" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path
+                  d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7zm0 12a5 5 0 110-10 5 5 0 010 10z">
+                </path>
+                <circle cx="12" cy="12" r="2.5"></circle>
+              </svg>
+              <svg class="eye-slash" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path
+                  d="M2 4.27L3.28 3 21 20.72 19.73 22 16.9 19.17A11.82 11.82 0 0112 21c-5 0-9.27-3.11-11-7 .7-1.56 1.8-2.96 3.2-4.18L2 4.27zM7.53 8.18A5 5 0 0012 17a4.98 4.98 0 003.41-1.28l-1.44-1.44A2.99 2.99 0 0112 15a3 3 0 01-3-3c0-.35.07-.68.18-.99L7.53 8.18zm9.6-2.01L18.6 6.7C19.76 7.97 20.69 9.4 21 11c-1.73 3.89-6 7-11 7-1.14 0-2.24-.15-3.27-.42l1.6-1.6c.74.2 1.52.3 2.37.3a5 5 0 003.41-8.57L17.13 5.9z">
+                </path>
+              </svg>
+            </button>
+          </div>
+
+          <input type="submit" class="btn" value="Sign up" />
+        </form>
+      </div>
+    </div>
+
+    <!-- Panels -->
+    <div class="panels-container">
+      <div class="panel left-panel">
+        <div class="content" style="text-align: center;">
+          <div class="logo-container" style="text-align: center; position: relative; top: -40px;">
+            <img src="images/rushuelogo.jpg" alt="Logo" width="100" style="border-radius: 50%;" />
+          </div>
+          <div style="margin-top: -30px;">
+            <h3>New here?</h3>
+          </div>
+          <br>
+          <button class="btn transparent" id="sign-up-btn">Sign up</button>
+        </div>
+        <img src="" class="image" alt="" />
+      </div>
+      <div class="panel right-panel">
+        <div class="content">
+          <h3>One of us?</h3>
+          <p>Still not signed in? Halika ka na Warrior</p>
+          <button class="btn transparent" id="sign-in-btn">Sign in</button>
+        </div>
+        <img src="img/register.svg" class="image" alt="" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Prevent Back Navigation -->
+  <script>
+    window.history.pushState(null, "", window.location.href);
+    window.onpopstate = function () {
+      window.history.pushState(null, "", window.location.href);
+    };
+  </script>
+  
+<script>
+// =============================
+// Firebase init (v8 SDK)
+// =============================
+const firebaseConfig = {
+  apiKey: "AIzaSyAO-rovSC2xK4ZUV9pD3ixKViQl9x4xzNk",
+  authDomain: "rushue-234bc.firebaseapp.com",
+  databaseURL: "https://rushue-234bc-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "rushue-234bc",
+  storageBucket: "rushue-234bc.appspot.com",
+  messagingSenderId: "574730836644",
+  appId: "1:574730836644:web:ff7c9e9eae7fc498e4a431"
+};
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db   = firebase.database();
+
+// Keep user logged in locally
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+// Guard so redirects don't interrupt writes during sign in/up
+let suppressRedirect = false;
+
+// Redirect helper
+function redirectFor(user){
+  if (!user) return;
+  if (user.email === "lanceconcepcion1021@gmail.com") {
+    window.location.replace("admininside.html");
+  } else {
+    window.location.replace("student.html");
+  }
+}
+
+// Only auto-redirect when not performing a sign-in/up flow
+auth.onAuthStateChanged((user) => {
+  if (suppressRedirect) return;
+  if (user) redirectFor(user);
+});
+
+// =============================
+// Sign In
+// =============================
+document.querySelector(".sign-in-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = e.target.email.value.trim();
+  const password = e.target.password.value;
+
+  try {
+    suppressRedirect = true;
+    const cred = await auth.signInWithEmailAndPassword(email, password);
+    redirectFor(cred.user);                 // redirect explicitly after success
+  } catch (err) {
+    console.error(err);
+    let message = "Login failed. Please try again.";
+    if (err.code === "auth/wrong-password") message = "Incorrect password.";
+    else if (err.code === "auth/user-not-found") message = "Incorrect email. No account found.";
+    else if (err.code === "auth/invalid-email") message = "Invalid email format.";
+    Swal.fire("Error", message, "error");
+  } finally {
+    suppressRedirect = false;
+  }
+});
+
+// =============================
+// Sign Up (create auth user + save to Realtime DB)
+// =============================
+document.querySelector(".sign-up-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const email           = document.getElementById("email").value.trim();
+  const password        = document.getElementById("password").value;
+  const confirmPassword = document.getElementById("confirmPassword").value;
+  const firstName       = document.getElementById("firstName").value.trim();
+  const lastName        = document.getElementById("lastName").value.trim();
+
+  if (password !== confirmPassword) {
+    Swal.fire("Error", "Passwords do not match!", "error");
+    return;
+  }
+
+  try {
+    suppressRedirect = true;
+
+    // 1) Create auth user
+    const cred = await auth.createUserWithEmailAndPassword(email, password);
+    const user = cred.user;
+
+    // 2) Write per-user profile at users/<uid>
+    await db.ref("users/" + user.uid).set({
+      uid: user.uid,
+      firstName,
+      lastName,
+      email,
+      role: "student",
+      createdAt: new Date().toISOString()
+    });
+
+    // 3) (Optional) Flat mirror at /users — don't let this block redirect
+    try {
+      await db.ref("users").update({
+        email: email,
+        firstName: firstName,
+        lastName: lastName
+      });
+    } catch (mirrorErr) {
+      console.warn("Flat mirror write failed (ignored):", mirrorErr.message);
+      // Intentionally ignored so sign-up still succeeds
+    }
+
+    // 4) Redirect to student.html after success (always)
+    Swal.fire("Success", "Account created successfully!", "success")
+      .then(() => window.location.replace("student.html"));
+
+  } catch (error) {
+    console.error(error);
+    Swal.fire("Sign Up Failed", error.message, "error");
+  } finally {
+    suppressRedirect = false;
+  }
+});
+
+// =============================
+// Panel switcher (unchanged UI)
+// =============================
+const signUpBtn  = document.getElementById("sign-up-btn");
+const signInBtn  = document.getElementById("sign-in-btn");
+const container  = document.querySelector(".container");
+signUpBtn.addEventListener("click", () => container.classList.add("sign-up-mode"));
+signInBtn.addEventListener("click", () => container.classList.remove("sign-up-mode"));
+
+// =============================
+// Show/Hide password toggles
+// =============================
+document.querySelectorAll(".toggle-password").forEach((btn) => {
+  const targetId = btn.getAttribute("data-target");
+  const input    = document.getElementById(targetId);
+  const eye      = btn.querySelector(".eye");
+  const eyeSlash = btn.querySelector(".eye-slash");
+
+  if (input && input.type === "password") {
+    eye.style.display = "inline";
+    eyeSlash.style.display = "none";
+  }
+
+  btn.addEventListener("click", () => {
+    if (!input) return;
+    if (input.type === "password") {
+      input.type = "text";
+      eye.style.display = "none";
+      eyeSlash.style.display = "inline";
+    } else {
+      input.type = "password";
+      eye.style.display = "inline";
+      eyeSlash.style.display = "none";
+    }
+  });
+});
+</script>
+
+
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+</body>
+
+</html>

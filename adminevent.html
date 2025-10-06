@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rush UE Admin Dashboard</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(to bottom, #fbd1dc, #fff);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .animated-bg, .animated-bg2 {
+      position: fixed;
+      z-index: 0;
+      border-radius: 50%;
+      opacity: 0.3;
+      filter: blur(80px);
+    }
+
+    .animated-bg {
+      top: -100px;
+      left: -100px;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, #ffdde1, #fbd1dc);
+      animation: float 10s ease-in-out infinite;
+    }
+
+    .animated-bg2 {
+      bottom: -120px;
+      right: -120px;
+      width: 250px;
+      height: 250px;
+      background: radial-gradient(circle, #ffc2d1, #f8b5bd);
+      animation: float2 12s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) translateX(0); }
+      50% { transform: translateY(20px) translateX(10px); }
+    }
+
+    @keyframes float2 {
+      0%, 100% { transform: translateY(0) translateX(0); }
+      50% { transform: translateY(-15px) translateX(-20px); }
+    }
+
+    .navbar {
+      background-color: #fff;
+      z-index: 2;
+      position: relative;
+    }
+
+    .navbar-brand img {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+    }
+
+    .navbar-text-center {
+      font-weight: 600;
+      font-size: 1.5rem;
+      color: #dc3545;
+      margin-left: 15px;
+    }
+
+    .dashboard-container {
+      flex: 1;
+      z-index: 1;
+      position: relative;
+    }
+
+    footer {
+      background-color: #dc3545;
+      color: white;
+      font-size: 0.9rem;
+      z-index: 2;
+      position: relative;
+    }
+
+    footer a {
+      color: #fff;
+      text-decoration: underline;
+    }
+
+    table th, table td {
+      text-align: center;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Animated Background Blobs -->
+<div class="animated-bg"></div>
+<div class="animated-bg2"></div>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg shadow-sm">
+  <div class="container d-flex align-items-center">
+    <a class="navbar-brand" href="student.html">
+      <img src="images/rushuelogo.jpg" alt="Logo">
+    </a>
+    <div class="navbar-text-center">
+      Upcoming Events
+    </div>
+  </div>
+</nav>
+
+<!-- Main Content: Events Table -->
+<div class="container dashboard-container my-5">
+  <h2 class="text-center mb-4">Upcoming Events</h2>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th scope="col">Event Name</th>
+        <th scope="col">Date</th>
+        <th scope="col">Location</th>
+        <th scope="col">Description</th>
+      </tr>
+    </thead>
+    <tbody id="events-table-body">
+      <!-- Events will be displayed here dynamically -->
+    </tbody>
+  </table>
+</div>
+
+<!-- Footer -->
+<footer class="text-center py-4 mt-auto">
+  <div class="container">
+    <p class="mb-0">&copy; 2025 University of the East | <a href="#">Rush UE</a></p>
+  </div>
+</footer>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+  // Firebase Configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyAO-rovSC2xK4ZUV9pD3ixKViQl9xK4xzNk",
+    authDomain: "rushue-234bc.firebaseapp.com",
+    databaseURL: "https://rushue-234bc-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "rushue-234bc",
+    storageBucket: "rushue-234bc.appspot.com",
+    messagingSenderId: "574730836644",
+    appId: "1:574730836644:web:ff7c9e9eae7fc498e4a431"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // Fetch Events from Firebase
+  db.ref('events').on('value', (snapshot) => {
+    const events = snapshot.val();
+    const tableBody = document.getElementById('events-table-body');
+    
+    // Clear the table before adding new data
+    tableBody.innerHTML = '';
+
+    // Loop through the events and append to the table
+    for (const eventId in events) {
+      if (events.hasOwnProperty(eventId)) {
+        const event = events[eventId];
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+          <td>${event.name || ''}</td>
+          <td>${event.date || ''}</td>
+          <td>${event.location || ''}</td>
+          <td>${event.description || ''}</td>
+        `;
+        
+        tableBody.appendChild(row);
+      }
+    }
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

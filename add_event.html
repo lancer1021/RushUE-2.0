@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Rush UE | Events Dashboard</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <!-- Bootstrap / Fonts / Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+
+  <style>
+    :root { --ue-red:#dc3545; }
+    body {
+      font-family:'Poppins',sans-serif;
+      background:linear-gradient(to bottom,#fbd1dc,#fff);
+      min-height:100vh; display:flex; flex-direction:column; overflow-x:hidden; position:relative;
+    }
+    /* Animated Background Blobs */
+    .animated-bg,.animated-bg2 {
+      position:fixed; z-index:0; border-radius:50%; opacity:.3; filter:blur(80px);
+    }
+    .animated-bg {
+      top:-100px; left:-100px; width:300px; height:300px;
+      background:radial-gradient(circle,#ffdde1,#fbd1dc); animation:float 10s ease-in-out infinite;
+    }
+    .animated-bg2 {
+      bottom:-120px; right:-120px; width:250px; height:250px;
+      background:radial-gradient(circle,#ffc2d1,#f8b5bd); animation:float2 12s ease-in-out infinite;
+    }
+    @keyframes float { 0%,100%{transform:translate(0,0)} 50%{transform:translate(10px,20px)} }
+    @keyframes float2{ 0%,100%{transform:translate(0,0)} 50%{transform:translate(-20px,-15px)} }
+
+    /* Navbar */
+    .navbar { background:#fff; }
+    .navbar-brand img { width:80px; height:auto; border-radius:50%; }
+    .navbar-text-center { flex:1; text-align:center; font-weight:600; font-size:1.5rem; color:#000; }
+    .muted{ color:#6b7280; }
+
+    /* Cards */
+    .card{ border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.06); }
+    canvas{ max-height:260px; }
+
+    /* Main container */
+    .dashboard-container{ flex:1; padding-top:24px; z-index:1; position:relative; }
+    .controls .form-label{ font-weight:600; }
+
+    /* Footer */
+    footer{ background:var(--ue-red); color:#fff; font-size:.9rem; z-index:2; position:relative; }
+    footer a{ color:#fff; text-decoration:underline; }
+  </style>
+</head>
+<body>
+
+  <!-- Animated Background Blobs -->
+  <div class="animated-bg"></div>
+  <div class="animated-bg2"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg shadow-sm">
+    <div class="container d-flex align-items-center">
+      <a class="navbar-brand" href="admininside.html">
+        <img src="images/rushuelogo.jpg" alt="Logo">
+      </a>
+      <div class="navbar-text-center">
+        Data Analytics Dashboard
+      </div>
+      <span class="small muted d-none d-md-inline" id="authState">Connecting…</span>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="container dashboard-container">
+
+    <!-- Controls -->
+    <div class="card mb-3">
+      <div class="card-body controls">
+        <div class="row g-3 align-items-end">
+          <div class="col-12 col-md-3">
+            <label class="form-label">From</label>
+            <input type="date" id="fromDate" class="form-control"/>
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">To</label>
+            <input type="date" id="toDate" class="form-control"/>
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Building</label>
+            <select id="buildingFilter" class="form-select">
+              <option value="">All</option>
+              <option value="EN">Engineering (EN)</option>
+              <option value="TYK">TYK</option>
+              <option value="LCT">LCT</option>
+              <option value="UEC_MAIN">UEC Main</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-3 d-flex gap-2">
+            <button id="btnRefresh" class="btn btn-danger flex-fill">
+              <i class="fa-solid fa-rotate"></i> Refresh
+            </button>
+            <button id="btnCSV" class="btn btn-outline-secondary flex-fill">
+              <i class="fa-solid fa-file-csv"></i> Export CSV
+            </button>
+          </div>
+        </div>
+        <div class="mt-2 small muted">
+          Data source: <code>/click_events</code> (Realtime Database)
+          <span class="ms-2" id="rangeLabel"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row g-3">
+      <div class="col-12 col-lg-6">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="mb-2">Clicks per day</h6>
+            <canvas id="chartDaily"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="mb-2">Clicks per building</h6>
+            <canvas id="chartBuilding"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top targets -->
+    <div class="card my-3">
+      <div class="card-body">
+        <h6 class="mb-2">Most clicked targets per building</h6>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr><th style="width:160px">Building</th><th>Top Targets (count)</th></tr>
+            </thead>
+            <tbody id="topTargetsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent sample -->
+    <div class="card my-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <h6 class="mb-2">Recent events (sample)</h6>
+          <span class="small muted" id="countLabel"></span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr><th>Date</th><th>Building</th><th>Room</th><th>Target</th></tr>
+            </thead>
+            <tbody id="sampleBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <footer class="text-center py-4 mt-auto">
+    <div class="container">
+      <p class="mb-0">&copy; 2025 University of the East | <a href="#">Rush UE</a></p>
+    </div>
+  </footer>
+
+  <!-- Firebase (v9 ESM) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+    import { getDatabase, ref, get, query, orderByChild, startAt, endAt } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey:"AIzaSyAO-rovSC2xK4ZUV9pD3ixKViQl9x4xzNk",
+      authDomain:"rushue-234bc.firebaseapp.com",
+      databaseURL:"https://rushue-234bc-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId:"rushue-234bc",
+      storageBucket:"rushue-234bc.appspot.com",
+      messagingSenderId:"574730836644",
+      appId:"1:574730836644:web:ff7c9e9eae7fc498e4a431"
+    };
+
+    // init
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getDatabase(app);
+
+    // ui refs
+    const fromDateEl = document.getElementById('fromDate');
+    const toDateEl   = document.getElementById('toDate');
+    const buildingEl = document.getElementById('buildingFilter');
+    const btnRefresh = document.getElementById('btnRefresh');
+    const btnCSV     = document.getElementById('btnCSV');
+    const rangeLabel = document.getElementById('rangeLabel');
+    const topTargetsBody = document.getElementById('topTargetsBody');
+    const sampleBody  = document.getElementById('sampleBody');
+    const countLabel  = document.getElementById('countLabel');
+    const authState   = document.getElementById('authState');
+
+    // charts
+    let chartDaily=null, chartBuilding=null;
+
+    // date helpers
+    const isoDay = (d)=> d.toISOString().slice(0,10);
+    function parseYYYYMMDD(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+    function startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+    function endOfDay(d){ const x=new Date(d); x.setHours(23,59,59,999); return x; }
+
+    // default range: last 30 days
+    function setDefaultRange(){
+      const to=new Date();
+      const from=new Date(); from.setDate(to.getDate()-29);
+      fromDateEl.value = isoDay(from);
+      toDateEl.value   = isoDay(to);
+    }
+
+    // read events from DB with range + optional building filter
+    async function fetchEvents(){
+      const from = startOfDay(parseYYYYMMDD(fromDateEl.value));
+      const to   = endOfDay(parseYYYYMMDD(toDateEl.value));
+      const b    = (buildingEl.value||'').toUpperCase();
+
+      const qref = query(ref(db,'click_events'), orderByChild('ts_num'), startAt(from.getTime()), endAt(to.getTime()));
+      const snap = await get(qref);
+      let rows = snap.exists() ? Object.values(snap.val()) : [];
+
+      if (b) rows = rows.filter(r => (r.building||'').toUpperCase() === b);
+
+      return rows.sort((a,c)=> (a.ts_num||0)-(c.ts_num||0));
+    }
+
+    // aggregate
+    function buildAggregates(rows, fromStr, toStr){
+      // clicks/day
+      const allDays=[]; {
+        const from=parseYYYYMMDD(fromStr), to=parseYYYYMMDD(toStr);
+        for(let d=new Date(from); d<=to; d.setDate(d.getDate()+1)) allDays.push(isoDay(d));
+      }
+      const perDay = Object.fromEntries(allDays.map(d=>[d,0]));
+      rows.forEach(r=>{ if(r.date && perDay[r.date]!==undefined) perDay[r.date]++; });
+
+      // clicks/building
+      const perBldg = {EN:0,TYK:0,LCT:0,UEC_MAIN:0};
+      rows.forEach(r=>{ const b=(r.building||'').toUpperCase(); if(perBldg[b]!==undefined) perBldg[b]++; });
+
+      // top targets per building
+      const perBldgTargets = {EN:{},TYK:{},LCT:{},UEC_MAIN:{}};
+      rows.forEach(r=>{
+        const b=(r.building||'').toUpperCase();
+        const t=r.target||'(unknown)';
+        if(!perBldgTargets[b]) perBldgTargets[b]={};
+        perBldgTargets[b][t]=(perBldgTargets[b][t]||0)+1;
+      });
+
+      return { perDay, perBldg, perBldgTargets, days: allDays };
+    }
+
+    // charts
+    function renderDaily(labels, data){
+      const ctx=document.getElementById('chartDaily').getContext('2d');
+      if(chartDaily) chartDaily.destroy();
+      chartDaily=new Chart(ctx,{
+        type:'line',
+        data:{ labels, datasets:[{ label:'Clicks', data, tension:.25 }]},
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{precision:0}}}}
+      });
+    }
+    function renderBuilding(perBldg){
+      const ctx=document.getElementById('chartBuilding').getContext('2d');
+      if(chartBuilding) chartBuilding.destroy();
+      const labels=['Engineering (EN)','TYK','LCT','UEC Main'];
+      const data=[perBldg.EN,perBldg.TYK,perBldg.LCT,perBldg.UEC_MAIN];
+      chartBuilding=new Chart(ctx,{
+        type:'bar',
+        data:{ labels, datasets:[{ label:'Clicks', data }]},
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{precision:0}}}}
+      });
+    }
+
+    // table sections
+    function renderTopTargets(perBldgTargets){
+      const body=topTargetsBody; body.innerHTML='';
+      const order=['EN','TYK','LCT','UEC_MAIN'];
+      const names={EN:'Engineering',TYK:'TYK',LCT:'LCT',UEC_MAIN:'UEC Main'};
+      order.forEach(code=>{
+        const pairs=Object.entries(perBldgTargets[code]||{}).sort((a,b)=>b[1]-a[1]).slice(0,8);
+        const td = pairs.length ? pairs.map(([k,v])=>`${k} <span class="muted">(${v})</span>`).join(' · ')
+                                : '<span class="muted">No data</span>';
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td><strong>${names[code]}</strong></td><td>${td}</td>`;
+        body.appendChild(tr);
+      });
+    }
+
+    function renderSample(rows){
+      countLabel.textContent = `${rows.length} events`;
+      const body=sampleBody; body.innerHTML='';
+      const sample = rows.slice(-50).reverse();
+      sample.forEach(r=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${r.date||''}</td><td>${(r.building||'')}</td><td>${r.room||''}</td><td>${r.target||''}</td>`;
+        body.appendChild(tr);
+      });
+    }
+
+    function exportCSV(rows){
+      const headers=['date','building','room','target','roomType','roomFloor','ts_num'];
+      const escape=v=> `"${String(v??'').replace(/"/g,'""')}"`;
+      const lines=[headers.join(',')];
+      rows.forEach(r=>{ lines.push(headers.map(h=>escape(r[h])).join(',')); });
+      const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url; a.download=`rushue_clicks_${fromDateEl.value}_to_${toDateEl.value}.csv`; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // main load
+    async function refresh(){
+      rangeLabel.textContent = `${fromDateEl.value} → ${toDateEl.value}`;
+      const rows = await fetchEvents();
+      const { perDay, perBldg, perBldgTargets, days } = buildAggregates(rows, fromDateEl.value, toDateEl.value);
+      renderDaily(days, days.map(d=>perDay[d]));
+      renderBuilding(perBldg);
+      renderTopTargets(perBldgTargets);
+      renderSample(rows);
+      btnCSV.onclick = ()=>exportCSV(rows);
+    }
+
+    // auth first, then default range + initial refresh
+    onAuthStateChanged(auth, async (user)=>{
+      if(user){ authState.textContent = `Signed in (anon): ${user.uid.slice(0,6)}…`; return; }
+      try{
+        await signInAnonymously(auth);
+      }catch(e){
+        authState.textContent = 'Auth failed — enable Anonymous sign-in';
+        console.error(e);
+      }
+    });
+
+    // set default dates and hook up refresh
+    setDefaultRange();
+    btnRefresh.addEventListener('click', refresh);
+    [fromDateEl,toDateEl,buildingEl].forEach(el=>el.addEventListener('change', refresh));
+
+    // first load
+    refresh();
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

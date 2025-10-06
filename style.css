@@ -1,0 +1,95 @@
+/* General Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(to bottom, #ffd6d6, #fff); /* Red-to-white gradient */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Navbar */
+.navbar {
+    padding: 15px 20px;
+}
+
+.navbar-brand img {
+    width: 70px;
+}
+
+.navbar-nav .nav-link {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Main Content Container */
+.container {
+    flex-grow: 1; /* Pushes footer down */
+}
+
+/* Hero Section */
+.header {
+    width: 100%;
+    padding: 50px 15px;
+    text-align: center;
+}
+
+.header h1 {
+    font-size: 42px;
+    font-weight: 700;
+    color: #333;
+}
+
+.header p {
+    font-size: 18px;
+    color: #555;
+}
+
+/* Footer */
+footer {
+    background: rgba(255, 255, 255, 0.8);
+    color: #555;
+    text-align: center;
+    padding: 15px 0;
+    font-size: 14px;
+    border-top: 1px solid #ddd;
+}
+
+footer a {
+    color: #ff523b;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+.sectiontext {
+    font-size: 14px; /* Or try 0.85rem or 14px for smaller text */
+    text-align: justify;
+    color: #444; /* Optional: a softer text color */
+}
+
+
+
+
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 32px;
+    }
+
+    .navbar-nav {
+        text-align: center;
+    }
+
+    .navbar-nav .nav-link {
+        padding: 10px;
+        display: block;
+    }
+}

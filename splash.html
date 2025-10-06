@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intro Screen</title>
+    <style>
+        /* Splash Screen Styles */
+        .splash-screen {
+            position: flex;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #ffffff;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+
+
+        .splash-screen .logo {
+            margin-bottom: 50px;
+            padding-top: 250px;
+        }
+
+        .splash-screen img {
+            width: 150px;  /* Adjust the size of your logo */
+            animation: logoAnimation 2s infinite alternate;
+        }
+
+        /* Loading Spinner Styles */
+        .loading-spinner {
+            margin-top: 10px;
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #da2929;
+            border-radius: 50%;
+            width: 50px;
+            height: 25px;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Main Content Styles */
+        .main-content {
+            padding: 25px;
+            text-align: center;
+            display: none; /* Initially hidden */
+        }
+
+        /* Animations */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes logoAnimation {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body>
+    <div id="splash-screen" class="splash-screen">
+        <div class="logo">
+
+            <img src="images/rushuelogo.jpg" alt="Logo" width="150" style="border-radius: 50%;" />
+        </div>
+        <p>INITIALIZING</p>
+        <br>
+        <br>
+        <br>
+
+        <!-- Loading Spinner -->
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Main Content of Your App -->
+    <div id="main-content" class="main-content">
+        <p>Welcome to the main content!</p>
+    </div>
+
+    <script>
+        window.onload = function() {
+            // Check if the splash screen has already been shown in this session
+            if (!sessionStorage.getItem('splashShown')) {
+                // Set timeout for splash screen to show for 10 seconds
+                setTimeout(function() {
+                    // Hide the splash screen
+                    document.getElementById('splash-screen').style.display = 'none';
+                    
+                    // Redirect to login.html after 10 seconds
+                    window.location.href = 'login.html';
+                    
+                    // Mark the splash screen as shown
+                    sessionStorage.setItem('splashShown', 'true');
+                }, 3000);  // 10000 ms = 10 seconds
+            } else {
+                // If splash screen has already been shown, directly show the main content
+                document.getElementById('splash-screen').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+            }
+        };
+    </script>
+
+</body>
+</html>

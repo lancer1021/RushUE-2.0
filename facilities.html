@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Rush UE | Facilities Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(to bottom, #fbd1dc, #fff);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated Background Blobs */
+        .animated-bg, .animated-bg2 {
+            position: fixed;
+            z-index: 0;
+            border-radius: 50%;
+            opacity: 0.3;
+            filter: blur(80px);
+        }
+
+        .animated-bg {
+            top: -100px;
+            left: -100px;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, #ffdde1, #fbd1dc);
+            animation: float 10s ease-in-out infinite;
+        }
+
+        .animated-bg2 {
+            bottom: -120px;
+            right: -120px;
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle, #ffc2d1, #f8b5bd);
+            animation: float2 12s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            50% { transform: translateY(20px) translateX(10px); }
+        }
+
+        @keyframes float2 {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            50% { transform: translateY(-15px) translateX(-20px); }
+        }
+
+        /* Navbar Styling */
+        .navbar {
+            background-color: #ffffff;
+        }
+        .navbar-brand img {
+            width: 80px;
+            height: auto;
+            border-radius: 50%;
+        }
+        .navbar-text-center {
+            flex: 1;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.5rem;
+            color: black; /* Changed the color to black */
+        }
+
+        /* Main Container */
+        .dashboard-container {
+            flex: 1;
+            padding-top: 30px;
+            z-index: 1;
+            position: relative;
+        }
+
+        /* Footer */
+        footer {
+            background-color: #dc3545;
+            color: white;
+            font-size: 0.9rem;
+            z-index: 2;
+            position: relative;
+        }
+        footer a {
+            color: #fff;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Animated Background Blobs -->
+<div class="animated-bg"></div>
+<div class="animated-bg2"></div>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg shadow-sm">
+    <div class="container d-flex align-items-center">
+        <a class="navbar-brand" href="student.html">
+            <img src="images/rushuelogo.jpg" alt="Logo">
+        </a>
+        <div class="navbar-text-center">
+            Facilities Dashboard
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="container dashboard-container text-center">
+    <!-- Add your content here -->
+</div>
+
+<!-- Footer -->
+<footer class="text-center py-4 mt-auto">
+    <div class="container">
+        <p class="mb-0">&copy; 2025 University of the East | <a href="#">Rush UE</a></p>
+    </div>
+</footer>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rush UE Room Navigate</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet">
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body{font-family:'Poppins',sans-serif;background:linear-gradient(to bottom,#fbd1dc,#fff);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden;position:relative}
+    .animated-bg,.animated-bg2{position:fixed;z-index:0;border-radius:50%;opacity:.3;filter:blur(80px)}
+    .animated-bg{top:-100px;left:-100px;width:300px;height:300px;background:radial-gradient(circle,#ffdde1,#fbd1dc);animation:float 10s ease-in-out infinite}
+    .animated-bg2{bottom:-120px;right:-120px;width:250px;height:250px;background:radial-gradient(circle,#ffc2d1,#f8b5bd);animation:float2 12s ease-in-out infinite}
+    @keyframes float{0%,100%{transform:translateY(0) translateX(0)}50%{transform:translateY(20px) translateX(10px)}}
+    @keyframes float2{0%,100%{transform:translateY(0) translateX(0)}50%{transform:translateY(-15px) translateX(-20px)}}
+    .header-container{display:flex;align-items:center;padding:12px 20px;background-color:rgba(255,255,255,.9);backdrop-filter:blur(10px);box-shadow:0 2px 8px rgba(0,0,0,.1);position:relative;z-index:2;border-radius:0 0 15px 15px}
+    .header-container img{width:50px;height:50px;border-radius:50%;object-fit:cover;margin-right:10px;box-shadow:0 5px 15px rgba(220,53,69,.3)}
+    .header-title{font-weight:600;font-size:1.4rem;color:#dc3545}
+    .container{max-width:1000px;margin:20px auto;padding:15px;position:relative;z-index:1}
+    h2{font-weight:600;font-size:1.3rem;margin-bottom:15px}
+    select,input{width:100%;padding:12px;font-size:1rem;border:2px solid #f2cfd5;border-radius:8px;margin-bottom:15px;outline:none}
+    select:focus,input:focus{border-color:#dc3545;box-shadow:0 0 6px rgba(220,53,69,.3)}
+    table{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.9);font-size:.9rem}
+    th,td{padding:10px;text-align:center;border-bottom:1px solid #f2cfd5}
+    th{background:#fddde6;font-weight:600}
+    tr:hover{background:#ffe6eb;cursor:pointer}
+    footer{background-color:#dc3545;color:#fff;font-size:.85rem;text-align:center;padding:10px;margin-top:auto}
+    #modalMapWrap{display:none}
+    #modalMap{height:320px;width:100%;border-radius:8px}
+    .walker{width:14px;height:14px;background:#2563eb;border:2px solid #fff;border-radius:50%;box-shadow:0 0 6px rgba(0,0,0,.35)}
+    @media (max-width:768px){
+      .header-title{font-size:1.2rem}
+      .header-container img{width:45px;height:45px}
+      table,thead,tbody,th,td,tr{display:block}
+      thead{display:none}
+      tr{margin-bottom:12px;border-radius:12px;background:rgba(255,255,255,.95);padding:10px;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+      td{display:flex;justify-content:space-between;padding:8px;border:none;border-bottom:1px solid #eee}
+      td:last-child{border-bottom:none}
+      td::before{content:attr(data-label);font-weight:600;color:#dc3545}
+      #modalMap{height:260px}
+    }
+  </style>
+</head>
+<body>
+  <div class="animated-bg"></div>
+  <div class="animated-bg2"></div>
+
+  <div class="header-container">
+    <a href="admininside.html"><img src="images/rushuelogo.jpg" alt="UE Logo"></a>
+    <h2 class="header-title">Room Navigation</h2>
+  </div>
+
+  <div class="container">
+    <h2>Select Building</h2>
+    <select id="buildingSelect">
+      <option value="EN">Engineering (EN)</option>
+      <option value="TYK">Tan Yan Kee (TYK)</option>
+      <option value="LCT">Lucio Tan Building (LCT)</option>
+      <option value="UEC_MAIN">Main Campus (UEC_MAIN)</option>
+    </select>
+    <input type="text" id="search" placeholder="Search room (e.g. EN-401, student_affairs_office)...">
+    <table id="roomTable">
+      <thead>
+        <tr><th>Room</th><th>Type</th><th>Floor</th><th>Description</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- analytics -->
+  <div class="container">
+    <h2>Usage Analytics</h2>
+    <div class="d-flex gap-3 flex-wrap">
+      <div class="card flex-grow-1" style="min-width:300px;">
+        <div class="card-body">
+          <h6 class="card-title mb-2">Clicks per day (last 30 days)</h6>
+          <canvas id="chartDaily" height="130"></canvas>
+        </div>
+      </div>
+      <div class="card flex-grow-1" style="min-width:300px;">
+        <div class="card-body">
+          <h6 class="card-title mb-2">Clicks per building</h6>
+          <canvas id="chartBuilding" height="130"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="card mt-3">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <h6 class="card-title mb-0">Most clicked targets per building</h6>
+          <button id="refreshAnalytics" class="btn btn-sm btn-outline-danger">Refresh</button>
+        </div>
+        <div class="table-responsive mt-2">
+          <table class="table table-sm">
+            <thead><tr><th style="width:140px;">Building</th><th>Top Targets (count)</th></tr></thead>
+            <tbody id="topTargetsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- modal -->
+  <div class="modal fade" id="roomModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title">Room Details</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p><strong>Room:</strong> <span id="modalRoom"></span></p>
+          <p id="modalTypeWrap"><strong>Type:</strong> <span id="modalType"></span></p>
+          <p id="modalFloorWrap"><strong>Floor:</strong> <span id="modalFloor"></span></p>
+          <p><strong>Description:</strong></p>
+          <p id="modalDescription" class="mb-3"></p>
+          <div id="modalMapWrap" class="mt-2">
+            <p class="mb-2"><strong>Walking Path:</strong> <span id="pathSubtitle"></span></p>
+            <div id="modalMap"></div>
+            <small class="text-muted d-block mt-1">The blue dot animates along your path.</small>
+          </div>
+          <div id="mapError" class="alert alert-warning mt-2 d-none">
+            Couldn’t load the campus path map. Confirm that
+            <code>Ue_G (5).geojson</code> and <code>Ue_G_paths.geojson</code> are next to this file.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer><p>&copy; 2025 University of the East | Rush UE</p></footer>
+
+  <script type="module">
+    // firebase v9
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import {
+      getDatabase, ref, get, push, set, serverTimestamp,
+      query, orderByChild, startAt
+    } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+    // firebase config
+    const firebaseConfig = {
+      apiKey:"AIzaSyAO-rovSC2xK4ZUV9pD3ixKViQl9x4xzNk",
+      authDomain:"rushue-234bc.firebaseapp.com",
+      databaseURL:"https://rushue-234bc-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId:"rushue-234bc",
+      storageBucket:"rushue-234bc.appspot.com",
+      messagingSenderId:"574730836644",
+      appId:"1:574730836644:web:ff7c9e9eae7fc498e4a431"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+
+    // map room names -> path nodes
+    const ROOM_TO_TARGET = {
+      gymnasium:'Gym',
+      'admission office':'Admission Building',
+      admission_office:'Admission Building',
+      campus_chapel:'Chapel',
+      pe_office:'Gym',
+      comptroller_office:'Admission Building',
+      'comptroller office':'Admission Building',
+      medical_dental_clinic:'Medical Dental Clinic',
+      'medical dental clinic':'Medical Dental Clinic',
+      med_dental:'Medical Dental Clinic',
+      registrar:"Registrar's Office",
+      "registrar's office":"Registrar's Office",
+      student_affairs_office:'Student Affairs Office',
+      canteen_santino:'Canteen',
+      hrm_mock_building:'HRM Mockup Building',
+      lucio_tan_building:'Lucio Tan Building',
+      lct:'Lucio Tan Building',
+      tyk:'TYK 1st Elevator',
+      'tan yan kee':'TYK 1st Elevator',
+      'tyk 1st elevator':'TYK 1st Elevator',
+      'tyk first elevator':'TYK 1st Elevator',
+      'tyk second elevator':'TYK 2nd Elevator',
+      en_right:'Engineering Building Right Side Entrance'
+    };
+
+    // alias sets to resolve labels in GeoJSON
+    const ALIASES = {
+      GATE:['Gate','Main Gate','Front Gate','UE Gate'],
+      EN_RIGHT:[
+        'Engineering Building Right Side Entrance','Engineering Building Right Entrance',
+        'EN Right Entrance','Engineering Right Side Entrance'
+      ],
+      TYK:['Tan Yan Kee','TYK','TYK Building','Tan Yan Kee Building'],
+      TYK_ELEV_1:['TYK 1st Elevator','Tyk First Elevator','TYK First Elevator'],
+      TYK_ELEV_2:['TYK 2nd Elevator','Tyk Second Elevator','TYK Second Elevator'],
+      LCT:['Lucio Tan','Lucio Tan Building','LCT','LCT Building'],
+      UEC_MAIN:['UEC Main','UEC Main Building','Main Campus','Main Building','UEC_MAIN'],
+      GYM:['Gym','Gymnasium'],
+      ADMISSION:['Admission Building','Admission Office','Admissions','admission_office'],
+      CHAPEL:['Chapel','Campus Chapel'],
+      CANTEEN:['Canteen','Canteen Santino','canteen_santino'],
+      REGISTRAR:["Registrar's Office",'Registrar'],
+      SAO:['Student Affairs Office','SAO'],
+      HRM:['HRM Mockup Building','hrm_mock_building'],
+      MED_DENTAL:['Medical Dental Clinic','medical dental clinic','medical_dental_clinic']
+    };
+
+    // helpers
+    const norm = s => String(s||'').trim().toLowerCase();
+    const slug = s => norm(s).replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+
+    // build graph from Ue_G_paths.geojson
+    let GRAPH=null, ALL_NODE_NAMES=[];
+    async function ensureGraphReady(){
+      if(GRAPH) return GRAPH;
+      const res=await fetch('Ue_G_paths.geojson',{cache:'no-store'});
+      if(!res.ok) throw new Error('Cannot load Ue_G_paths.geojson');
+      const data=await res.json();
+
+      const adjDir=new Map(), edges=[], nodes=new Set();
+      for(const f of (data.features||[])){
+        const p=f.properties||{};
+        const from=(p.from||p.From||p.start||'').toString().trim();
+        const to  =(p.to  ||p.To  ||p.end  ||'').toString().trim();
+        if(!from||!to) continue;
+        nodes.add(from); nodes.add(to);
+        if(!adjDir.has(from)) adjDir.set(from,[]);
+        adjDir.get(from).push({to,feature:f});
+        edges.push([from,to,f]);
+      }
+      ALL_NODE_NAMES=Array.from(nodes);
+      GRAPH={
+        edges, adjDir, nodes,
+        getAdjUndir(){
+          if(this.adjUndir) return this.adjUndir;
+          const m=new Map();
+          const add=(a,b,f)=>{ if(!m.has(a)) m.set(a,[]); m.get(a).push({to:b,feature:f}); };
+          for(const [a,b,f] of edges){ add(a,b,f); add(b,a,f); }
+          this.adjUndir=m;
+          return m;
+        }
+      };
+      return GRAPH;
+    }
+
+    // resolve label -> node
+    function resolveNode(label){
+      const q=norm(label);
+      let hit=ALL_NODE_NAMES.find(n=>norm(n)===q) ||
+              ALL_NODE_NAMES.find(n=>norm(n).includes(q)||q.includes(norm(n)));
+      if(hit) return hit;
+      for(const arr of Object.values(ALIASES)){
+        if(arr.some(a=>q.includes(norm(a)))){
+          hit=ALL_NODE_NAMES.find(n=>arr.some(a=>norm(n).includes(norm(a))));
+          if(hit) return hit;
+        }
+      }
+      hit=ALL_NODE_NAMES.find(n=>q.split(/\s+/).every(tok=>norm(n).includes(tok)));
+      return hit||null;
+    }
+
+    // bfs edges: fewest segments
+    function bfsRoute(graph,start,goal,undirected=false){
+      const adj = undirected ? graph.getAdjUndir() : graph.adjDir;
+      const q=[start], parent=new Map([[start,null]]);
+      let reached=null;
+      while(q.length){
+        const cur=q.shift();
+        if(cur===goal){ reached=cur; break; }
+        for(const e of (adj.get(cur)||[])){
+          if(!parent.has(e.to)){ parent.set(e.to,{prev:cur,feature:e.feature}); q.push(e.to); }
+        }
+      }
+      if(!reached) return null;
+      const chain=[]; let cur=reached;
+      while(parent.get(cur)){ chain.push(parent.get(cur).feature); cur=parent.get(cur).prev; }
+      return chain.reverse();
+    }
+
+    // find Gate -> target
+    async function findRouteFromGate(toLabel){
+      await ensureGraphReady();
+      const start=resolveNode('Gate');
+      const goal =resolveNode(toLabel);
+      if(!start||!goal) return null;
+      let chain=bfsRoute(GRAPH,start,goal,false);
+      if(!chain) chain=bfsRoute(GRAPH,start,goal,true);
+      if(!chain) return null;
+      const coords=[];
+      for(const f of chain){
+        const g=f.geometry||{};
+        if(g.type==='LineString') coords.push(...g.coordinates);
+        else if(g.type==='MultiLineString') g.coordinates.forEach(arr=>coords.push(...arr));
+      }
+      return {features:chain,coordinates:coords,start,goal};
+    }
+
+    // leaflet map
+    let modalMap=null, buildingsLayer=null, routeLayer=null, progressLine=null, walker=null, animRAF=null;
+    function ensureModalMap(){
+      if(modalMap) return modalMap;
+      const el=document.getElementById('modalMap');
+      modalMap=L.map(el,{zoomControl:true}).setView([14.6575,120.983],18);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:22}).addTo(modalMap);
+      setTimeout(()=>modalMap.invalidateSize(),0);
+      return modalMap;
+    }
+    async function addBuildingsOverlay(){
+      try{
+        const r=await fetch(encodeURI('Ue_G (5).geojson'),{cache:'no-store'});
+        if(!r.ok) return;
+        const data=await r.json();
+        buildingsLayer=L.geoJSON(data,{style:{color:'#9ca3af',weight:1,fillOpacity:.2}}).addTo(modalMap);
+      }catch{}
+    }
+    function clearRouteLayers(){
+      if(routeLayer){ modalMap.removeLayer(routeLayer); routeLayer=null; }
+      if(progressLine){ modalMap.removeLayer(progressLine); progressLine=null; }
+      if(walker){ modalMap.removeLayer(walker); walker=null; }
+    }
+    function destroyModalMap(){
+      if(animRAF){ cancelAnimationFrame(animRAF); animRAF=null; }
+      clearRouteLayers();
+      if(buildingsLayer){ modalMap.removeLayer(buildingsLayer); buildingsLayer=null; }
+      if(modalMap){ modalMap.remove(); modalMap=null; }
+    }
+
+    // draw + animate
+    function drawAndAnimate(coords){
+      clearRouteLayers();
+      const merged={type:'Feature',geometry:{type:'LineString',coordinates:coords}};
+      routeLayer=L.geoJSON(merged,{style:{color:'#60a5fa',weight:5,opacity:.25}}).addTo(modalMap);
+      modalMap.fitBounds(routeLayer.getBounds(),{padding:[20,20]});
+      const latlngs=coords.map(c=>L.latLng(c[1],c[0]));
+      progressLine=L.polyline([latlngs[0]],{color:'#2563eb',weight:6}).addTo(modalMap);
+      walker=L.marker(latlngs[0],{icon:L.divIcon({className:'walker'}),zIndexOffset:1000}).addTo(modalMap);
+      const SPEED=2.2*1.15; // m/s
+      const segs=[]; for(let i=0;i<latlngs.length-1;i++){ const a=latlngs[i],b=latlngs[i+1]; const d=modalMap.distance(a,b); segs.push({a,b,dur:d/SPEED*1000}); }
+      let i=0,t0=performance.now();
+      const step=(now)=>{
+        const s=segs[i]; if(!s){ animRAF=null; return; }
+        const t=Math.min(1,(now-t0)/s.dur);
+        const cur=L.latLng(s.a.lat+(s.b.lat-s.a.lat)*t, s.a.lng+(s.b.lng-s.a.lng)*t);
+        walker.setLatLng(cur);
+        const pts=progressLine.getLatLngs();
+        if(!pts.length||modalMap.distance(pts[pts.length-1],cur)>0.5){ pts.push(cur); progressLine.setLatLngs(pts); }
+        if(t>=1){ i++; t0=now; const pts2=progressLine.getLatLngs(); pts2.push(s.b); progressLine.setLatLngs(pts2); walker.setLatLng(s.b); }
+        animRAF=requestAnimationFrame(step);
+      };
+      animRAF=requestAnimationFrame(step);
+    }
+
+    // choose destination for clicked room
+    function pickTargetForRoom(roomNum,roomData,selectedBuilding){
+      const cands=[String(roomNum||''),norm(roomNum),slug(roomNum),String(roomData?.name||''),norm(roomData?.name||''),slug(roomData?.name||'')];
+      for(const c of cands){ if(ROOM_TO_TARGET[c]) return ROOM_TO_TARGET[c]; }
+      switch(selectedBuilding){
+        case 'EN': return 'Engineering Building Right Side Entrance';
+        case 'TYK': return 'TYK 1st Elevator';
+        case 'LCT': return 'Lucio Tan Building';
+        case 'UEC_MAIN': return 'UEC Main';
+        default: return null;
+      }
+    }
+
+    // log a click to firebase
+    async function logClick({building,room,target,roomType,roomFloor}){
+      try{
+        const d=new Date();
+        const dateStr=d.toISOString().slice(0,10); // YYYY-MM-DD
+        const payload={
+          building, room, target,
+          roomType: roomType||'',
+          roomFloor: roomFloor??'',
+          date: dateStr,
+          ts_num: Date.now(),        // client ts for querying
+          ts: serverTimestamp()      // server ts for ordering
+        };
+        await set(push(ref(db,'click_events')), payload);
+      }catch(e){
+        console.error('logClick failed', e);
+      }
+    }
+
+    // bind row -> modal + map + logging
+    function attachRoomRowHandler(row,roomNum,roomData){
+      const modalEl=document.getElementById('roomModal');
+      const modalRoom=document.getElementById('modalRoom');
+      const modalType=document.getElementById('modalType');
+      const modalFloor=document.getElementById('modalFloor');
+      const modalDescription=document.getElementById('modalDescription');
+      const modalTypeWrap=document.getElementById('modalTypeWrap');
+      const modalFloorWrap=document.getElementById('modalFloorWrap');
+      const modalMapWrap=document.getElementById('modalMapWrap');
+      const pathSubtitle=document.getElementById('pathSubtitle');
+      const mapError=document.getElementById('mapError');
+      const buildingSelect=document.getElementById('buildingSelect');
+
+      row.addEventListener('click',async()=>{
+        modalRoom.textContent=roomNum;
+        modalType.textContent=roomData?.type||'';
+        modalFloor.textContent=roomData?.floor??'';
+        modalDescription.textContent=roomData?.description||'No description available';
+
+        const building=buildingSelect?.value||'';
+        const target=pickTargetForRoom(roomNum,roomData,building);
+        const showMap=Boolean(target);
+
+        // log click now
+        logClick({building,room:roomNum,target,roomType:roomData?.type,roomFloor:roomData?.floor});
+
+        modalTypeWrap.style.display = showMap ? 'none' : '';
+        modalFloorWrap.style.display = showMap ? 'none' : '';
+        modalMapWrap.style.display   = showMap ? 'block' : 'none';
+        pathSubtitle.textContent     = showMap ? `Gate → ${target}` : '';
+        mapError.classList.add('d-none');
+
+        const bsModal=new bootstrap.Modal(modalEl);
+        bsModal.show();
+
+        const onShown=async()=>{
+          if(!showMap) return;
+          try{
+            ensureModalMap();
+            await addBuildingsOverlay();
+            await ensureGraphReady();
+            const route=await findRouteFromGate(target);
+            if(!route || !route.coordinates?.length){ mapError.classList.remove('d-none'); return; }
+            mapError.classList.add('d-none');
+            drawAndAnimate(route.coordinates);
+          }catch(e){ console.error(e); mapError.classList.remove('d-none'); }
+        };
+        const onHidden=()=>{
+          destroyModalMap();
+          modalEl.removeEventListener('shown.bs.modal',onShown);
+          modalEl.removeEventListener('hidden.bs.modal',onHidden);
+          loadAnalytics(); // refresh charts after a click
+        };
+        modalEl.addEventListener('shown-bs.modal',onShown);
+        // bootstrap event name fix:
+        modalEl.addEventListener('shown.bs.modal',onShown);
+        modalEl.addEventListener('hidden.bs.modal',onHidden);
+      });
+    }
+
+    // load rooms from firebase
+    const buildingSelectEl=document.getElementById('buildingSelect');
+    const searchEl=document.getElementById('search');
+    const tableBody=document.querySelector('#roomTable tbody');
+
+    async function loadRooms(buildingCode){
+      tableBody.innerHTML="<tr><td colspan='4'>Loading...</td></tr>";
+      const snapshot=await get(ref(db,buildingCode));
+      if(!snapshot.exists()){ tableBody.innerHTML="<tr><td colspan='4'>No data available</td></tr>"; return; }
+      const building=snapshot.val();
+      const allRooms={};
+      if(building.floors){
+        for(const floorKey in building.floors){
+          const floor=building.floors[floorKey];
+          if(floor.rooms){
+            for(const roomKey in floor.rooms){
+              allRooms[roomKey]={...floor.rooms[roomKey],floor:floorKey,name:roomKey};
+            }
+          }
+        }
+      }
+      if(building.special_rooms){
+        for(const specialKey in building.special_rooms){
+          allRooms[specialKey]={...building.special_rooms[specialKey],floor:"Special",name:specialKey};
+        }
+      }
+      displayRooms(allRooms);
+      searchEl.oninput=()=>filterRooms(allRooms,searchEl.value);
+    }
+
+    function displayRooms(rooms){
+      tableBody.innerHTML='';
+      Object.entries(rooms).forEach(([roomNum,roomData])=>{
+        const row=document.createElement('tr');
+        row.innerHTML=`
+          <td data-label="Room">${roomNum}</td>
+          <td data-label="Type">${roomData.type||''}</td>
+          <td data-label="Floor">${roomData.floor}</td>
+          <td data-label="Description">${roomData.description||''}</td>`;
+        attachRoomRowHandler(row,roomNum,roomData);
+        tableBody.appendChild(row);
+      });
+    }
+
+    function filterRooms(rooms,query){
+      const q=(query||'').toLowerCase();
+      const filtered={};
+      Object.entries(rooms).forEach(([roomNum,roomData])=>{
+        const match =
+          roomNum.toLowerCase().includes(q) ||
+          (roomData.remarks&&roomData.remarks.toLowerCase().includes(q)) ||
+          (roomData.type&&roomData.type.toLowerCase().includes(q)) ||
+          (roomData.description&&roomData.description.toLowerCase().includes(q)) ||
+          (roomData.floor&&String(roomData.floor).toLowerCase().includes(q));
+        if(match) filtered[roomNum]=roomData;
+      });
+      displayRooms(filtered);
+    }
+
+    // analytics state
+    let chartDaily=null, chartBuilding=null;
+
+    // build last N days list
+    function lastNDates(n){
+      const arr=[]; const d=new Date();
+      for(let i=n-1;i>=0;i--){
+        const x=new Date(d); x.setDate(d.getDate()-i);
+        arr.push(x.toISOString().slice(0,10));
+      }
+      return arr;
+    }
+
+    // load and render analytics
+    async function loadAnalytics(){
+      try{
+        const since = Date.now() - 30*24*60*60*1000; // last 30 days
+        const qref = query(ref(db,'click_events'), orderByChild('ts_num'), startAt(since));
+        const snap = await get(qref);
+        const rows = snap.exists() ? Object.values(snap.val()) : [];
+
+        // counts per day
+        const days = lastNDates(30);
+        const dayCounts = Object.fromEntries(days.map(d=>[d,0]));
+        rows.forEach(r=>{ if(r.date && dayCounts[r.date]!==undefined) dayCounts[r.date]++; });
+
+        // counts per building
+        const buildingCounts = {EN:0, TYK:0, LCT:0, UEC_MAIN:0};
+        rows.forEach(r=>{
+          const b=(r.building||'').toUpperCase();
+          if(buildingCounts[b]!==undefined) buildingCounts[b]++;
+        });
+
+        // top targets per building
+        const perBldgTargets = {EN:{}, TYK:{}, LCT:{}, UEC_MAIN:{}};
+        rows.forEach(r=>{
+          const b=(r.building||'').toUpperCase();
+          const t=r.target||'(unknown)';
+          if(!perBldgTargets[b]) perBldgTargets[b]={};
+          perBldgTargets[b][t]=(perBldgTargets[b][t]||0)+1;
+        });
+
+        // render charts
+        renderDailyChart(days, days.map(d=>dayCounts[d]));
+        renderBuildingChart(buildingCounts);
+
+        // render table of top targets
+        const body=document.getElementById('topTargetsBody');
+        body.innerHTML='';
+        ['EN','TYK','LCT','UEC_MAIN'].forEach(b=>{
+          const entries = Object.entries(perBldgTargets[b]||{}).sort((a,b)=>b[1]-a[1]).slice(0,5);
+          const td = entries.length ? entries.map(([k,v])=>`${k} <span class="text-muted">(${v})</span>`).join(' · ') : '<span class="text-muted">No data</span>';
+          const tr=document.createElement('tr');
+          const name = b==='EN'?'Engineering': b==='TYK'?'TYK': b==='LCT'?'LCT':'UEC Main';
+          tr.innerHTML=`<td><strong>${name}</strong></td><td>${td}</td>`;
+          body.appendChild(tr);
+        });
+
+      }catch(e){
+        console.error('loadAnalytics failed', e);
+      }
+    }
+
+    // draw daily line
+    function renderDailyChart(labels, data){
+      const ctx=document.getElementById('chartDaily').getContext('2d');
+      if(chartDaily) chartDaily.destroy();
+      chartDaily=new Chart(ctx,{
+        type:'line',
+        data:{ labels, datasets:[{ label:'Clicks', data, fill:false }]},
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+      });
+    }
+
+    // draw building bar
+    function renderBuildingChart(counts){
+      const ctx=document.getElementById('chartBuilding').getContext('2d');
+      if(chartBuilding) chartBuilding.destroy();
+      const labels=['Engineering (EN)','TYK','LCT','UEC Main'];
+      const data=[counts.EN, counts.TYK, counts.LCT, counts.UEC_MAIN];
+      chartBuilding=new Chart(ctx,{
+        type:'bar',
+        data:{ labels, datasets:[{ label:'Clicks', data }]},
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+      });
+    }
+
+    // init
+    loadRooms(document.getElementById('buildingSelect').value);
+    document.getElementById('buildingSelect').addEventListener('change',()=>loadRooms(document.getElementById('buildingSelect').value));
+    document.getElementById('refreshAnalytics').addEventListener('click', loadAnalytics);
+    loadAnalytics(); // initial analytics load
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
